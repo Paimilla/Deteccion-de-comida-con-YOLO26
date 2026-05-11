@@ -1,0 +1,69 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Nutrifoto AI — .gitignore
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── Flutter / Dart ──────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+/coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.pub-cache/
+.pub/
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.code-workspace
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ─── Secrets & API Keys — NUNCA subir al repo ───────────────────────────────
+.env
+*.env
+run.ps1
+run.bat
+run.sh
+google-services.json
+firebase_options.dart
+
+# ─── ML Models (demasiado grandes para Git) ──────────────────────────────────
+# El modelo TFLite se distribuye por separado (ver README para instrucciones).
+# Si usas Git LFS, comenta estas líneas y configura LFS para *.tflite
+assets/models/*.onnx
+assets/models/*.pt
+assets/models/*.tflite
+
+# ─── Python tooling (scripts de desarrollo) ──────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ─── Build artifacts ────────────────────────────────────────────────────────
+*.class
+*.log
+app.*.symbols
+app.*.map.json
+/android/app/debug
+/android/app/profile
+/android/app/release
+*.apk
+*.aab
+
+# ─── Archivos temporales y residuales ────────────────────────────────────────
+*.bak
+*.old
+*.tmp
+*.fixed
+run_output.txt

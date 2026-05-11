@@ -1,0 +1,20 @@
+{
+  "platano": {
+    "id": "cl_001",
+    "name_es": "platano",
+    "name_en": "banana",
+    "kcal": 89,
+    "protein_g": 1.1,
+    "carbs_g": 22.8,
+    "fat_g": 0.3
+  },
+  "pollo": {
+    "id": "cl_002",
+    "name_es": "pollo",
+    "name_en": "chicken",
+    "kcal": 239,
+    "protein_g": 27.3,
+    "carbs_g": 0.0,
+    "fat_g": 13.6
+  }
+}

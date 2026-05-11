@@ -1,0 +1,55 @@
+name: nutrifoto_app
+description: >
+  Nutrifoto AI — Detección visual de comida con Deep Learning.
+  Motor híbrido YOLOv11 + estimación nutricional inteligente,
+  optimizado para comida chilena y latinoamericana.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Design
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+
+  # Camera & Vision
+  camera: ^0.11.0+2
+  image_picker: ^1.1.2
+  image: ^4.0.17
+  mobile_scanner: ^6.0.2
+  tflite_flutter: ^0.12.1
+
+  # Networking
+  http: ^1.2.2
+
+  # Voice & NLP
+  speech_to_text: ^7.0.0
+
+  # Notifications
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+  flutter_timezone: ^4.1.1
+
+  # Persistence & Auth
+  shared_preferences: ^2.3.2
+  google_sign_in: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/data/chile_food_44.sample.json
+    - assets/images/
+    - assets/models/
+    - assets/models/best_float16.tflite
+    - assets/models/labels.txt
