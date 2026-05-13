@@ -26,7 +26,7 @@ Si eres reclutador o quieres ver la app en acción rápidamente sin configurar e
 
 - **📱 Android**: Descarga el archivo de instalación directo desde la sección de [**Releases**](https://github.com/Paimilla/nutrifoto/releases) (APK).
 - **🎬 Video Walkthrough**: Mira nuestra [**Demo dinámica de 60 segundos**](#-guion-de-la-demo-walkthrough) para ver todas las funciones principales.
-- **🌐 Web Preview**: Próximamente disponible vía Appetize.io.
+- **🌐 Web Preview**: Haz clic [**aquí**](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) para probar la app directamente en tu navegador.
 
 ---
 
@@ -45,6 +45,19 @@ La aplicación no solo identifica comida; actúa como un asistente inteligente g
 
 > [!TIP]
 > **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtube.com/tuvideo).
+
+<details>
+<summary>🎞️ Ver Guion de la Demo (Walkthrough)</summary>
+
+| Fase | Duración | Funcionalidad Clave |
+| :--- | :--- | :--- |
+| **Intro** | 00-10s | Splash screen y Dashboard principal (Glassmorphism UI). |
+| **IA Vision** | 10-25s | Escaneo en tiempo real con **YOLO26**. Detección múltiple de alimentos. |
+| **Barcode** | 25-35s | Escaneo de productos con integración **OpenFoodFacts**. |
+| **Voice AI** | 35-50s | Registro por voz procesado por **Gemini AI** (NLP). |
+| **Analytics** | 50-60s | Dashboard interactivo con `fl_chart` y gestión de metas. |
+
+</details>
 
 ### 🌟 Por qué destaca este proyecto
 
