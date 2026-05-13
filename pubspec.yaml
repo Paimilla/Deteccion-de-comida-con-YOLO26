@@ -1,7 +1,7 @@
 name: nutrifoto_app
 description: >
   Nutrifoto AI — Detección visual de comida con Deep Learning.
-  Motor híbrido YOLOv11 + estimación nutricional inteligente,
+  Motor híbrido YOLO26 + estimación nutricional inteligente,
   optimizado para comida chilena y latinoamericana.
 publish_to: 'none'
 version: 1.0.0+1

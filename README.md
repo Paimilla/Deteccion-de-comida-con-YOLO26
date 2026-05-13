@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.11+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"/>
   <img src="https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart"/>
-  <img src="https://img.shields.io/badge/YOLOv11-TFLite-00D084?style=for-the-badge&logo=tensorflow&logoColor=white" alt="YOLOv11"/>
+  <img src="https://img.shields.io/badge/YOLO26-TFLite-00D084?style=for-the-badge&logo=tensorflow&logoColor=white" alt="YOLO26"/>
   <img src="https://img.shields.io/badge/Google%20Gemini-NLP-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"/>
   <img src="https://img.shields.io/badge/OpenFoodFacts-API-F68B1F?style=for-the-badge&logo=openfoodfacts&logoColor=white" alt="OpenFoodFacts"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
@@ -22,7 +22,7 @@
 
 ## 📖 Descripción
 
-**Nutrifoto AI** es la culminación de mi trabajo integrando **Computer Vision** y desarrollo móvil moderno. Diseñé y entrené un modelo **YOLOv11** utilizando un dataset propio curado de alimentos, permitiendo una detección on-device precisa y fluida. 
+**Nutrifoto AI** es la culminación de mi trabajo integrando **Computer Vision** y desarrollo móvil moderno. Diseñé y entrené un modelo **YOLO26** utilizando un dataset propio curado de alimentos, permitiendo una detección on-device precisa y fluida. 
 
 La aplicación no solo identifica comida; actúa como un asistente inteligente gracias a **Google Gemini**, ofreciendo coaching nutricional dinámico, análisis de macros y una experiencia visual premium con gráficos interactivos.
 
@@ -41,9 +41,9 @@ La aplicación no solo identifica comida; actúa como un asistente inteligente g
 | Problema | Solución |
 |---|---|
 | Registrar comida es tedioso y lento | 📸 **Camera-First**: una foto = registro completo |
-| Las apps de nutrición solo conocen comida anglosajona | 🇨🇱 **30 clases de comida chilena** entrenadas con YOLOv11 |
+| Las apps de nutrición solo conocen comida anglosajona | 🇨🇱 **30 clases de comida chilena** entrenadas con YOLO26 |
 | No hay contexto sobre lo que comes | 🤖 **Gemini NLP** parsea comandos de voz naturales |
-| El modelo puede fallar sin internet | 🧠 **Motor híbrido**: YOLOv11 on-device + fallback de colores |
+| El modelo puede fallar sin internet | 🧠 **Motor híbrido**: YOLO26 on-device + fallback de colores |
 | Los scanners de barras no muestran macros | 📦 **OpenFoodFacts** integrado con datos nutricionales completos |
 
 ---
@@ -54,7 +54,7 @@ La aplicación no solo identifica comida; actúa como un asistente inteligente g
 
 ```
 Imagen capturada
-    ├── [1] YOLOv11 TFLite (best_float16.tflite)
+    ├── [1] YOLO26 TFLite (best_float16.tflite)
     │       ├── Center-square crop (640×640)
     │       ├── Normalización float32 NHWC
     │       ├── Inferencia on-device (4 threads)
@@ -65,7 +65,7 @@ Imagen capturada
             └── Matching contra 13 templates de comida
 ```
 
-- **YOLOv11 float16** entrenado con 30 clases de comida chilena
+- **YOLO26 float16** entrenado con 30 clases de comida chilena
 - **Center-square crop** que maximiza resolución en el centro del plato
 - **Detección múltiple**: identifica varios alimentos en una foto (ej: "Pollo y Papas fritas")
 - **NMS nativo** con IoU threshold de 0.45 para eliminar detecciones duplicadas
@@ -76,19 +76,28 @@ Imagen capturada
 
 Para lograr la precisión necesaria en platos locales, no utilizamos modelos genéricos. Todo el pipeline de datos fue construido desde cero.
 
+### 📓 Notebook de Entrenamiento
+Para replicar el entrenamiento o ajustar el modelo, se incluye el notebook:
+[`assets/models/YOLO26_ComidaChilena.ipynb`](assets/models/YOLO26_ComidaChilena.ipynb)
+
+Este notebook detalla:
+- Descarga del dataset desde Roboflow (`Comida-Chilena-7`).
+- Configuración de hiperparámetros (Epochs: 100, Optimizer: auto, Mixup: 0.1).
+- Proceso de exportación a formatos ONNX y TFLite.
+
 ### 📊 Curación del Dataset
 El dataset consiste en más de **5,000 imágenes** curadas de comida chilena y latina, recolectadas y etiquetadas manualmente para asegurar la calidad de las bounding boxes.
 
 <p align="center">
-  <img src="assets/docs/training/labeling.png" alt="Proceso de Etiquetado" width="600"/><br>
+  <img src="assets/docs/training/labeling_v2.png" alt="Proceso de Etiquetado" width="600"/><br>
   <em>Interfaz de etiquetado manual para platos de comida chilena (Cazuela, Empanadas, etc.)</em>
 </p>
 
-### 📈 Métricas de Entrenamiento (YOLOv11)
+### 📈 Métricas de Entrenamiento (YOLO26)
 El modelo fue entrenado durante 100 epochs en una GPU NVIDIA RTX, optimizando el mAP para dispositivos móviles.
 
 <p align="center">
-  <img src="assets/docs/training/metrics.png" alt="Métricas de Entrenamiento" width="700"/><br>
+  <img src="assets/docs/training/metrics_v2.png" alt="Métricas de Entrenamiento" width="700"/><br>
   <em>Curvas de Loss (Box, Obj, Cls) y Precisión (mAP@0.5) durante el entrenamiento.</em>
 </p>
 
@@ -195,7 +204,7 @@ El proyecto sigue una **arquitectura por capas** inspirada en Clean Architecture
 |------|-----------|-----------|
 | **UI** | Flutter 3.11+ / Material 3 | Framework cross-platform |
 | **Tipografía** | Google Fonts (Manrope) | Diseño premium y legible |
-| **IA On-Device** | TFLite Flutter + YOLOv11 | Detección de comida sin internet |
+| **IA On-Device** | TFLite Flutter + YOLO26 | Detección de comida sin internet |
 | **NLP / Coach** | Google Gemini API (Flash) | Parsing de voz y coaching inteligente |
 | **Estadísticas** | fl_chart | Gráficos interactivos y analíticas |
 | **Barcode** | mobile_scanner + OpenFoodFacts | Escaneo y datos de productos |
@@ -232,7 +241,7 @@ lib/
 │       └── tracking_repository.dart  # Interfaz de persistencia
 ├── infrastructure/                   # Implementaciones concretas
 │   ├── providers/
-│   │   ├── onnx_vision_provider.dart # YOLOv11 TFLite + Color fallback
+│   │   ├── onnx_vision_provider.dart # YOLO26 TFLite + Color fallback
 │   │   ├── openfoodfacts_provider.dart
 │   │   ├── openfoodfacts_search_provider.dart
 │   │   ├── edamam_provider.dart
@@ -240,7 +249,6 @@ lib/
 │   │   ├── usda_provider.dart
 │   │   ├── spoonacular_provider.dart
 │   │   ├── cascade_provider.dart     # Fallback encadenado de providers
-│   │   ├── fastapi_vision_provider.dart
 │   │   └── local_chile_provider.dart
 │   ├── repositories/
 │   │   └── json_tracking_repository.dart
@@ -340,12 +348,12 @@ flutter run \
 | **Edamam** | [developer.edamam.com](https://developer.edamam.com/) | 100 req/min |
 | **OpenFoodFacts** | [world.openfoodfacts.org](https://world.openfoodfacts.org/) | Sin límite (open data) |
 
-### 4. Modelo YOLOv11 TFLite
+### 4. Modelo YOLO26 TFLite
 
 El modelo no está incluido en el repositorio debido a su tamaño (~42 MB). Descárgalo y colócalo en:
 
 ```
-assets/models/best_float16.tflite    # Modelo YOLOv11 float16
+assets/models/best_float16.tflite    # Modelo YOLO26 float16
 assets/models/labels.txt              # Etiquetas de las 30 clases
 ```
 
@@ -361,7 +369,7 @@ flutter run
 
 ## 📊 Clases Detectadas (30)
 
-El modelo YOLOv11 está entrenado para reconocer las siguientes comidas:
+El modelo YOLO26 está entrenado para reconocer las siguientes comidas:
 
 | # | Clase | # | Clase | # | Clase |
 |---|-------|---|-------|---|-------|
