@@ -97,9 +97,9 @@ El pipeline de datos se gestionó íntegramente con **Roboflow**, permitiendo un
 - **Dataset**: `Comida-Chilena-7` (versión 7), optimizado para exportación YOLO26.
 
 <p align="center">
-  <img src="assets/docs/training/roboflow_augmentation.png" alt="Augmentation Roboflow" width="400"/>
-  <img src="assets/docs/training/roboflow_stats.png" alt="Stats Roboflow" width="300"/><br>
-  <em>Ejemplos de aumentación y estadísticas de distribución de clases en Roboflow.</em>
+  <img src="assets/docs/training/dataset_augmentation.png" alt="Augmentation Roboflow" width="400"/>
+  <img src="assets/docs/training/dataset_statistics.png" alt="Stats Roboflow" width="300"/><br>
+  <em>Ejemplos de aumentación (naranjas) y estadísticas de distribución de clases en Roboflow.</em>
 </p>
 
 ### 📈 Métricas de Entrenamiento (YOLO26)
