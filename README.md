@@ -20,6 +20,16 @@
 
 ---
 
+## 🚀 ¡Pruébala ahora!
+
+Si eres reclutador o quieres ver la app en acción rápidamente sin configurar el entorno de desarrollo:
+
+- **📱 Android**: Descarga el archivo de instalación directo desde la sección de [**Releases**](https://github.com/Paimilla/nutrifoto/releases) (APK).
+- **🎬 Video Walkthrough**: Mira nuestra [**Demo dinámica de 60 segundos**](#-guion-de-la-demo-walkthrough) para ver todas las funciones principales.
+- **🌐 Web Preview**: Próximamente disponible vía Appetize.io.
+
+---
+
 ## 📖 Descripción
 
 **Nutrifoto AI** es la culminación de mi trabajo integrando **Computer Vision** y desarrollo móvil moderno. Diseñé y entrené un modelo **YOLO26** utilizando un dataset propio curado de alimentos, permitiendo una detección on-device precisa y fluida. 
