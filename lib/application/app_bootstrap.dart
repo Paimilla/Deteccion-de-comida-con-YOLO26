@@ -1,4 +1,8 @@
-import 'dart:io';
+import 'dart:io' show Directory;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../domain/repositories/tracking_repository.dart';
+import '../infrastructure/repositories/shared_prefs_tracking_repository.dart';
 
 import 'package:flutter/services.dart' show rootBundle;
 
@@ -57,8 +61,15 @@ class AppBootstrap {
       chileDatasetJson: chileDatasetJson,
     );
 
-    final storagePath = '${Directory.systemTemp.path}/nutrifoto_tracking.json';
-    final trackingRepository = JsonTrackingRepository(filePath: storagePath);
+    final prefs = await SharedPreferences.getInstance();
+    final TrackingRepository trackingRepository;
+
+    if (kIsWeb) {
+      trackingRepository = SharedPrefsTrackingRepository(prefs);
+    } else {
+      final storagePath = '${Directory.systemTemp.path}/nutrifoto_tracking.json';
+      trackingRepository = JsonTrackingRepository(filePath: storagePath);
+    }
 
     const defaultGoals = NutritionGoals(
       kcal: 2200,

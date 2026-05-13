@@ -26,7 +26,8 @@ Si eres reclutador o quieres ver la app en acción rápidamente sin configurar e
 
 - **📱 Android**: Descarga el archivo de instalación directo desde la sección de [**Releases**](https://github.com/Paimilla/nutrifoto/releases) (APK).
 - **🎬 Video Walkthrough**: Mira nuestra [**Demo dinámica de 60 segundos**](#-guion-de-la-demo-walkthrough) para ver todas las funciones principales.
-- **🌐 Web Preview**: Haz clic [**aquí**](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) para probar la app directamente en tu navegador.
+- **🌐 Web Live Demo**: [**Pruébala aquí**](https://tu-usuario.github.io/nutrifoto) (Experiencia fluida y nativa en el navegador).
+- **📱 Appetize Preview**: Si prefieres ver el entorno Android real, haz clic [**aquí**](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) (Puede ser lento al iniciar).
 
 ---
 

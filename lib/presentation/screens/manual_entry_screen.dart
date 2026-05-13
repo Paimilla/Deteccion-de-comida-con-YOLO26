@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' as io show File;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -249,22 +250,25 @@ class _ManualEntryScreenState extends State<ManualEntryScreen>
                                 )
                               : ClipRRect(
                                   borderRadius: BorderRadius.circular(15),
-                                  child: Image.file(
-                                    File(_selectedPhoto!.path),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Center(
-                                        child: Text(
-                                          'No se pudo cargar la imagen',
-                                          style: TextStyle(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.error,
-                                          ),
+                                  child: kIsWeb
+                                      ? Image.network(
+                                          _selectedPhoto!.path,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.file(
+                                          io.File(_selectedPhoto!.path),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Center(
+                                              child: Text(
+                                                'No se pudo cargar la imagen',
+                                                style: TextStyle(
+                                                  color: Theme.of(context).colorScheme.error,
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
-                                      );
-                                    },
-                                  ),
                                 ),
                         ),
                         const SizedBox(height: 10),

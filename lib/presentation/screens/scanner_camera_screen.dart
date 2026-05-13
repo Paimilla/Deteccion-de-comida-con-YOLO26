@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' as io show File;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -982,7 +983,9 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: _capturedImagePath != null
-                        ? Image.file(File(_capturedImagePath!), fit: BoxFit.cover)
+                        ? (kIsWeb
+                            ? Image.network(_capturedImagePath!, fit: BoxFit.cover)
+                            : Image.file(io.File(_capturedImagePath!), fit: BoxFit.cover))
                         : NutrifotoImage(
                             imageUrl: item.imageUrl,
                             name: item.nameEs,

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' as io show File;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -43,14 +43,19 @@ class OnnxVisionProvider implements VisionProvider {
 
       debugPrint('📋 Etiquetas cargadas: ${_labels?.length} clases');
 
-      // Intentar cargar modelo TFLite
-      try {
-        await _initializeTflite();
-        _useTflite = true;
-        debugPrint('✅ Modo TFLite activado (YOLOv11)');
-      } catch (e) {
-        debugPrint('⚠️ TFLite falló, usando análisis de colores: $e');
-        _tfliteError = e.toString();
+      // Intentar cargar modelo TFLite (Solo en Mobile/Desktop)
+      if (!kIsWeb) {
+        try {
+          await _initializeTflite();
+          _useTflite = true;
+          debugPrint('✅ Modo TFLite activado (YOLOv11)');
+        } catch (e) {
+          debugPrint('⚠️ TFLite falló: $e');
+          _tfliteError = e.toString();
+          _useTflite = false;
+        }
+      } else {
+        debugPrint('🌐 Web detected: TFLite native disabled, using Color Analysis fallback');
         _useTflite = false;
       }
 
@@ -113,7 +118,15 @@ class OnnxVisionProvider implements VisionProvider {
       debugPrint('🤖 Analizando con TFLite: $imagePath');
 
       // 1. Cargar imagen
-      final imageBytes = await File(imagePath).readAsBytes();
+      final Uint8List imageBytes;
+      if (kIsWeb) {
+        // En web, imagePath suele ser un Blob URL o similar
+        // Para la demo, podemos intentar cargarlo o usar un mock
+        return _classifyWithColorAnalysis(imagePath);
+      } else {
+        imageBytes = await io.File(imagePath).readAsBytes();
+      }
+      
       final image = img.decodeImage(imageBytes);
       if (image == null) return null;
 
@@ -512,7 +525,12 @@ class OnnxVisionProvider implements VisionProvider {
     try {
       debugPrint('📷 Fallback: analizando por colores: $imagePath');
 
-      final imageBytes = await File(imagePath).readAsBytes();
+      final Uint8List imageBytes;
+      if (kIsWeb) {
+        return _mockWebDetection();
+      } else {
+        imageBytes = await io.File(imagePath).readAsBytes();
+      }
       final image = img.decodeImage(imageBytes);
       if (image == null) return null;
 
@@ -718,14 +736,38 @@ class OnnxVisionProvider implements VisionProvider {
     if (denom < 1e-9) return 0;
 
     final cosine = dot / denom;
-    final totalImg = imgVec.fold(0.0, (a, b) => a + b);
-    final totalFood = foodVec.fold(0.0, (a, b) => a + b);
+    final totalImg = imgVec.fold<double>(0.0, (a, b) => a + b);
+    final totalFood = foodVec.fold<double>(0.0, (a, b) => a + b);
     final magRatio =
         totalFood > 0 ? (totalImg / totalFood).clamp(0.3, 3.0) : 1.0;
     final magPenalty =
         1.0 - ((magRatio - 1.0).abs() * 0.3).clamp(0.0, 0.5);
 
     return cosine * magPenalty;
+  }
+
+  /// Mock para la demo web
+  Future<FoodItem> _mockWebDetection() async {
+    // Simular retraso de "procesamiento"
+    await Future.delayed(const Duration(milliseconds: 800));
+    
+    return FoodItem(
+      source: FoodSource.aiVision,
+      itemId: 'web_mock_${DateTime.now().millisecondsSinceEpoch}',
+      nameEs: 'Detección Simulada (Web Demo)',
+      portion: const Portion(amount: 150, unit: 'g'),
+      nutrition: const Nutrition(
+        kcal: 245,
+        proteinG: 12.5,
+        carbsG: 30.0,
+        fatG: 8.0,
+      ),
+      confidence: 0.95,
+      metadata: {
+        'method': 'web_mock',
+        'note': 'IA Nativa desactivada en versión Web'
+      },
+    );
   }
 }
 

@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' as io show File;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -159,7 +160,11 @@ class _FoodCardContent extends StatelessWidget {
     final imageUrl = entry.food.imageUrl;
     ImageProvider? provider;
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      provider = imageUrl.startsWith('http') ? NetworkImage(imageUrl) : FileImage(File(imageUrl));
+      if (imageUrl.startsWith('http')) {
+        provider = NetworkImage(imageUrl);
+      } else if (!kIsWeb) {
+        provider = FileImage(io.File(imageUrl));
+      }
     }
 
     final nutrition = entry.food.nutrition;
