@@ -5,6 +5,7 @@ import '../../application/app_services.dart';
 import '../../domain/models/tracking_models.dart';
 import '../widgets/animated_screen_body.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/nutrifoto_ui.dart';
 
 enum _AchievementFilter { all, streak, meals }
 
@@ -137,7 +138,32 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                   ),
                 ),
                 if (_loading)
-                  const Center(child: CircularProgressIndicator())
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const SkeletonBox(height: 180, borderRadius: 24),
+                        const SizedBox(height: 14),
+                        const SkeletonBox(height: 48, borderRadius: 999, width: 260),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: GridView.count(
+                            crossAxisCount: gridColumns,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: gridAspect,
+                            children: List.generate(
+                              6,
+                              (index) => const SkeletonBox(
+                                height: 200,
+                                borderRadius: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 else if (_loadError != null)
                   Center(
                     child: Text(

@@ -8,18 +8,31 @@ class HistoryUseCases {
 
   Future<List<DailySummary>> lastNDays(int days) async {
     final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day)
+        .subtract(Duration(days: days - 1));
+    final end = DateTime(today.year, today.month, today.day, 23, 59, 59);
+
+    final allEntries = await repository.getEntriesBetween(start, end);
+    final goals = await repository.getGoals();
+    
     final summaries = <DailySummary>[];
 
     for (var i = 0; i < days; i++) {
       final day = DateTime(today.year, today.month, today.day)
           .subtract(Duration(days: i));
-      final entries = await repository.getEntriesForDay(day);
-      final goals = await repository.getGoals();
+      
+      final dayEntries = allEntries.where((e) => 
+        e.timestamp.year == day.year && 
+        e.timestamp.month == day.month && 
+        e.timestamp.day == day.day
+      ).toList();
+
       final hydration = await repository.getHydrationForDay(day);
+      
       summaries.add(
         DailySummary(
           day: day,
-          entries: entries,
+          entries: dayEntries,
           goals: goals,
           hydrationMl: hydration,
         ),

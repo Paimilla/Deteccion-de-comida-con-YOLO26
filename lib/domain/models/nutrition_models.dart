@@ -3,6 +3,7 @@ enum FoodSource {
   openFoodFacts,
   usda,
   spoonacular,
+  edamam,
   aiVision,
   unknown,
 }
@@ -72,6 +73,28 @@ class FoodItem {
       confidence: confidence ?? this.confidence,
       imageUrl: imageUrl ?? this.imageUrl,
       metadata: metadata ?? this.metadata,
+    );
+  }
+
+  /// Creates a copy of this FoodItem with a new portion amount, 
+  /// automatically rescaling all nutritional values.
+  FoodItem withNewAmount(double newAmount) {
+    if (portion.amount <= 0) return this;
+    final factor = newAmount / portion.amount;
+    return copyWith(
+      portion: Portion(amount: newAmount, unit: portion.unit),
+      nutrition: nutrition.rescale(factor),
+    );
+  }
+}
+
+extension NutritionX on Nutrition {
+  Nutrition rescale(double factor) {
+    return Nutrition(
+      kcal: kcal * factor,
+      proteinG: proteinG * factor,
+      carbsG: carbsG * factor,
+      fatG: fatG * factor,
     );
   }
 }

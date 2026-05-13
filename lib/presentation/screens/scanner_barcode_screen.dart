@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../application/app_services.dart';
@@ -136,6 +137,7 @@ class _ScannerBarcodeScreenState extends State<ScannerBarcodeScreen> {
     }
 
     _scanHandled = true;
+    HapticFeedback.lightImpact();
     await _scannerController.stop();
 
     setState(() {
@@ -214,7 +216,9 @@ class _ScannerBarcodeScreenState extends State<ScannerBarcodeScreen> {
       body: Stack(
         children: [
           if (_stage == _BarcodeStage.camera)
-            _BarcodeCameraStageView(
+            Semantics(
+              label: 'Camara de escaneo de codigo de barras',
+              child: _BarcodeCameraStageView(
               controller: _scannerController,
               error: _error,
               mealSlot: _mealSlot,
@@ -223,12 +227,16 @@ class _ScannerBarcodeScreenState extends State<ScannerBarcodeScreen> {
               onToggleFlash: _toggleFlash,
               onDetect: _onDetect,
             ),
+          ),
           if (_stage == _BarcodeStage.analyzing)
-            _BarcodeAnalyzingStageView(
-              step: _scanStep,
-              progress: _scanProgress,
-              mealSlot: _mealSlot,
-              barcodeValue: _barcodeValue,
+            Semantics(
+              label: 'Analizando producto',
+              child: _BarcodeAnalyzingStageView(
+                step: _scanStep,
+                progress: _scanProgress,
+                mealSlot: _mealSlot,
+                barcodeValue: _barcodeValue,
+              ),
             ),
           if (_stage == _BarcodeStage.result)
             _BarcodeResultStageView(

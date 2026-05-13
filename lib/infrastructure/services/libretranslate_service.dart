@@ -41,6 +41,37 @@ class LibreTranslateService implements TranslationService {
     );
   }
 
+  @override
+  Future<List<String>> translateBatch({
+    required List<String> texts,
+    required String source,
+    required String target,
+  }) async {
+    try {
+      final futures = texts.map((t) => _translate(
+            text: t,
+            source: source,
+            target: target,
+            fallback: t,
+          ));
+      return await Future.wait(futures);
+    } catch (_) {
+      return texts;
+    }
+  }
+
+  @override
+  Future<List<String>> translateAndDescribeBatch({
+    required List<String> titles,
+    required String source,
+    required String target,
+  }) async {
+    // LibreTranslate no tiene IA para generar descripciones.
+    // Solo traducimos y agregamos una descripción genérica.
+    final translated = await translateBatch(texts: titles, source: source, target: target);
+    return translated.map((t) => '$t | Una opción equilibrada y nutritiva.').toList();
+  }
+
   Future<String> _translate({
     required String text,
     required String source,

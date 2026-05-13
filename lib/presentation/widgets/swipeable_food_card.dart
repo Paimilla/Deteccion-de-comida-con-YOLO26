@@ -14,6 +14,8 @@ class SwipeableFoodCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onDuplicate;
   final VoidCallback? onTapSubstitute;
+  final VoidCallback? onTap;
+  final VoidCallback? onMore;
 
   const SwipeableFoodCard({
     super.key,
@@ -22,6 +24,8 @@ class SwipeableFoodCard extends StatelessWidget {
     this.onDelete,
     this.onDuplicate,
     this.onTapSubstitute,
+    this.onTap,
+    this.onMore,
   });
 
   @override
@@ -44,123 +48,123 @@ class SwipeableFoodCard extends StatelessWidget {
 
     final nutrition = entry.food.nutrition;
 
-    final card = Dismissible(
-      key: ValueKey(entry.id),
-      direction: DismissDirection.horizontal,
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.endToStart) {
-          // Swipe left → Delete
-          HapticFeedback.mediumImpact();
-          return true;
-        } else if (direction == DismissDirection.startToEnd) {
-          // Swipe right → Duplicate
-          HapticFeedback.lightImpact();
-          onDuplicate?.call();
+    final card = GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap?.call();
+      },
+      child: Dismissible(
+        key: ValueKey(entry.id),
+        direction: DismissDirection.horizontal,
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.endToStart) {
+            // Swipe left → Delete
+            HapticFeedback.mediumImpact();
+            return true;
+          } else if (direction == DismissDirection.startToEnd) {
+            // Swipe right → Duplicate
+            HapticFeedback.lightImpact();
+            onDuplicate?.call();
+            return false;
+          }
           return false;
-        }
-        return false;
-      },
-      onDismissed: (direction) {
-        if (direction == DismissDirection.endToStart) {
-          onDelete?.call();
-        }
-      },
-      background: _buildSwipeBackground(
-        alignment: Alignment.centerLeft,
-        color: NutrifotoColors.accentBlue,
-        icon: Icons.copy_rounded,
-        label: 'Duplicar',
-      ),
-      secondaryBackground: _buildSwipeBackground(
-        alignment: Alignment.centerRight,
-        color: const Color(0xFFFF4D4D),
-        icon: Icons.delete_outline_rounded,
-        label: 'Eliminar',
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
-          ),
+        },
+        onDismissed: (direction) {
+          if (direction == DismissDirection.endToStart) {
+            onDelete?.call();
+          }
+        },
+        background: _buildSwipeBackground(
+          alignment: Alignment.centerLeft,
+          color: NutrifotoColors.accentBlue,
+          icon: Icons.copy_rounded,
+          label: 'Duplicar',
         ),
-        child: Row(
-          children: [
-            // Food image/icon
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: accentColor.withValues(alpha: 0.5)),
-                image: provider != null
-                    ? DecorationImage(image: provider, fit: BoxFit.cover)
+        secondaryBackground: _buildSwipeBackground(
+          alignment: Alignment.centerRight,
+          color: const Color(0xFFFF4D4D),
+          icon: Icons.delete_outline_rounded,
+          label: 'Eliminar',
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Food image/icon
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.5)),
+                  image: provider != null
+                      ? DecorationImage(image: provider, fit: BoxFit.cover)
+                      : null,
+                ),
+                child: provider == null
+                    ? Icon(Icons.flatware_rounded,
+                        color: Colors.white.withValues(alpha: 0.7), size: 20)
                     : null,
               ),
-              child: provider == null
-                  ? Icon(Icons.flatware_rounded,
-                      color: Colors.white.withValues(alpha: 0.7), size: 20)
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            // Name + nutrients
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.food.nameEs,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: titleColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+              const SizedBox(width: 10),
+              // Name + nutrients
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.food.nameEs,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: titleColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${nutrition.kcal.toStringAsFixed(0)} kcal  •  P ${nutrition.proteinG.toStringAsFixed(1)}g  •  C ${nutrition.carbsG.toStringAsFixed(1)}g  •  G ${nutrition.fatG.toStringAsFixed(1)}g',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: subtitleColor,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 11,
+                    const SizedBox(height: 2),
+                    Text(
+                      '${nutrition.kcal.toStringAsFixed(0)} kcal  •  P ${nutrition.proteinG.toStringAsFixed(1)}g  •  C ${nutrition.carbsG.toStringAsFixed(1)}g  •  G ${nutrition.fatG.toStringAsFixed(1)}g',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // Substitute button
-            if (onTapSubstitute != null)
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onTapSubstitute!();
-                },
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: NutrifotoColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.swap_horiz_rounded,
-                    color: NutrifotoColors.primary,
-                    size: 18,
-                  ),
+                  ],
                 ),
               ),
-          ],
+              // More options button
+              IconButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  onMore?.call();
+                },
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: isDark ? Colors.white38 : Colors.black26,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
         ),
       ),
     );

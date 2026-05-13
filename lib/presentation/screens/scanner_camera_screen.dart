@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -67,6 +66,48 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   bool _recipeLoading = false;
   List<FoodItem> _recipeResults = const [];
 
+  // Sugerencias estáticas para carga instantánea
+  static final List<FoodItem> _staticRecipeSuggestions = [
+    const FoodItem(
+      source: FoodSource.localChile,
+      itemId: 'st_pollo_cam',
+      nameEs: 'Pechuga de Pollo a la Plancha',
+      portion: Portion(amount: 150, unit: 'g'),
+      nutrition: Nutrition(kcal: 247, proteinG: 46, carbsG: 0.5, fatG: 5.5),
+      imageUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=400&auto=format&fit=crop',
+      metadata: {
+        'short_description_es': 'Tierna pechuga de pollo asada con un toque de especias.',
+        'instructions_es': '1. Sazonar la pechuga con sal, pimienta y tus especias favoritas.\n2. Calentar una sartén a fuego medio con un poco de aceite.\n3. Cocinar la pechuga 6-8 minutos por lado hasta que esté dorada.\n4. Dejar reposar 2 minutos antes de cortar.'
+      },
+    ),
+    const FoodItem(
+      source: FoodSource.localChile,
+      itemId: 'st_salmon_cam',
+      nameEs: 'Salmón con Espárragos',
+      portion: Portion(amount: 200, unit: 'g'),
+      nutrition: Nutrition(kcal: 380, proteinG: 40, carbsG: 2, fatG: 22),
+      imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=400&auto=format&fit=crop',
+      metadata: {
+        'short_description_es': 'Filete de salmón sellado con vegetales verdes al dente.',
+        'instructions_es': '1. Limpiar los espárragos retirando la base fibrosa.\n2. Sellar el salmón en una sartén caliente con piel hacia abajo.\n3. Agregar los espárragos al mismo tiempo.\n4. Cocinar por 5 minutos y dar vuelta al salmón.'
+      },
+    ),
+    const FoodItem(
+      source: FoodSource.localChile,
+      itemId: 'st_ensalada_cam',
+      nameEs: 'Ensalada César con Pollo',
+      portion: Portion(amount: 300, unit: 'g'),
+      nutrition: Nutrition(kcal: 420, proteinG: 25, carbsG: 15, fatG: 28),
+      imageUrl: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?q=80&w=400&auto=format&fit=crop',
+      metadata: {
+        'short_description_es': 'Receta clásica con aderezo ligero y crutones integrales.',
+        'instructions_es': '1. Cortar la lechuga en trozos medianos.\n2. Preparar el pollo a la plancha y cortarlo en tiras.\n3. Mezclar con aderezo César bajo en grasa.\n4. Añadir crutones y queso parmesano al gusto.'
+      },
+    ),
+  ];
+
+  late List<FoodItem> _recipeFeaturedItems;
+
   // --- Voice tab state ---
   final _voiceCtrl = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -91,7 +132,22 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
       curve: Curves.easeInOut,
     ));
 
+    _recipeFeaturedItems = List.from(_staticRecipeSuggestions);
     _initSpeech();
+    _loadInitialRecipes();
+  }
+
+  Future<void> _loadInitialRecipes() async {
+    try {
+      final items = await widget.services.foodOrchestrator.searchRecipesInSpanish('saludable');
+      if (mounted && items.isNotEmpty) {
+        setState(() {
+          _recipeFeaturedItems = [..._staticRecipeSuggestions, ...items.take(5)].toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading recipes suggestions: $e');
+    }
   }
 
   @override
@@ -122,7 +178,10 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
 
   /// Disposes the food camera and starts the barcode scanner.
   Future<void> _switchToBarcodeMode() async {
-    // First dispose the existing camera controller to release the hardware
+    // First handle flash and dispose
+    if (_flashEnabled) {
+      try { await _cameraController?.setFlashMode(FlashMode.off); } catch (_) {}
+    }
     await _cameraController?.dispose();
     _cameraController = null;
     _cameraReady = false;
@@ -136,6 +195,9 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   /// Disposes the barcode scanner and restarts the food camera.
   Future<void> _switchToFoodMode() async {
     // Dispose the barcode controller to release the hardware
+    if (_flashEnabled) {
+      await _barcodeController?.toggleTorch(); // Si estaba prendido, toggle lo apaga
+    }
     await _barcodeController?.dispose();
     _barcodeController = null;
 
@@ -177,15 +239,25 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   }
 
   Future<void> _toggleFlash() async {
+    HapticFeedback.lightImpact();
+
+    if (_barcodeMode) {
+      if (_barcodeController == null) return;
+      await _barcodeController!.toggleTorch();
+      setState(() => _flashEnabled = !_flashEnabled);
+      return;
+    }
+
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
+    
     try {
-      HapticFeedback.lightImpact();
-      await controller.setFlashMode(
-        _flashEnabled ? FlashMode.off : FlashMode.torch,
-      );
+      final newMode = _flashEnabled ? FlashMode.off : FlashMode.torch;
+      await controller.setFlashMode(newMode);
       setState(() => _flashEnabled = !_flashEnabled);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error toggling flash: $e');
+    }
   }
 
   Future<void> _captureAndAnalyze() async {
@@ -194,7 +266,9 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
         !controller.value.isInitialized ||
         _capturing ||
         _loading ||
-        _saving) return;
+        _saving) {
+      return;
+    }
 
     HapticFeedback.mediumImpact();
     setState(() {
@@ -909,15 +983,10 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                     borderRadius: BorderRadius.circular(20),
                     child: _capturedImagePath != null
                         ? Image.file(File(_capturedImagePath!), fit: BoxFit.cover)
-                        : Image.network(
-                            item.imageUrl!, 
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: NutrifotoColors.surface,
-                              child: const Center(
-                                child: Icon(Icons.image_not_supported, color: Colors.white54, size: 64),
-                              ),
-                            ),
+                        : NutrifotoImage(
+                            imageUrl: item.imageUrl,
+                            name: item.nameEs,
+                            size: 64,
                           ),
                   ),
                 ),
@@ -950,16 +1019,36 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                     ],
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _NutrientBadge('Proteína',
-                            item.nutrition.proteinG, 'g', const Color(0xFF66BEFF)),
-                        _NutrientBadge('Carbos',
-                            item.nutrition.carbsG, 'g', const Color(0xFFFFD35F)),
-                        _NutrientBadge('Grasas',
-                            item.nutrition.fatG, 'g', const Color(0xFFD8C8FF)),
-                        _NutrientBadge(
-                            'kcal', item.nutrition.kcal, '', Colors.white),
+                        _CircularMacro(
+                          label: 'Calorías',
+                          value: item.nutrition.kcal,
+                          unit: 'kcal',
+                          target: 2200,
+                          color: Colors.orange,
+                        ),
+                        _CircularMacro(
+                          label: 'Prot',
+                          value: item.nutrition.proteinG,
+                          unit: 'g',
+                          target: 176,
+                          color: Colors.blue,
+                        ),
+                        _CircularMacro(
+                          label: 'Carbs',
+                          value: item.nutrition.carbsG,
+                          unit: 'g',
+                          target: 231,
+                          color: Colors.green,
+                        ),
+                        _CircularMacro(
+                          label: 'Grasa',
+                          value: item.nutrition.fatG,
+                          unit: 'g',
+                          target: 63,
+                          color: Colors.red,
+                        ),
                       ],
                     ),
                   ],
@@ -1019,9 +1108,9 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
         bottom: false,
         child: Column(
           children: [
-            _buildTabHeader('Recetas', Icons.menu_book_rounded),
+            _buildTabHeader('Explorar Recetas', Icons.menu_book_rounded),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -1029,24 +1118,26 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                       controller: _recipeCtrl,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Ingrediente (ej. pollo)',
+                        hintText: 'Ej: ensalada, pasta, pollo...',
                         hintStyle: TextStyle(
                             color: Colors.white.withValues(alpha: 0.4)),
                         filled: true,
                         fillColor: NutrifotoColors.surface,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
+                        prefixIcon: const Icon(Icons.restaurant_menu_rounded,
+                            color: NutrifotoColors.textMuted),
                       ),
                       onSubmitted: (_) => _doRecipeSearch(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
-                    icon: Icons.restaurant_menu,
+                    icon: Icons.search,
                     onTap: _recipeLoading ? null : _doRecipeSearch,
                   ),
                 ],
@@ -1055,25 +1146,62 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
             Expanded(
               child: _recipeLoading
                   ? ListView(
-                      children: List.generate(
-                          4, (_) => const SkeletonListItem()))
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      children: List.generate(3, (_) => const SkeletonListItem()))
                   : _recipeResults.isEmpty
-                      ? Center(
-                          child: Text('Busca recetas por ingrediente',
-                              style: TextStyle(
-                                  color: NutrifotoColors.textMuted)))
+                      ? ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Sugerencias Premium',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            ..._recipeFeaturedItems.map((item) => _RecipeResultCard(
+                                  item: item,
+                                  onTap: () => _showFoodDetail(item),
+                                )),
+                          ],
+                        )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _recipeResults.length,
                           itemBuilder: (ctx, i) =>
-                              _FoodListTile(
+                              _RecipeResultCard(
                                 item: _recipeResults[i],
-                                onAdd: () => _saveItem(_recipeResults[i]),
+                                onTap: () => _showFoodDetail(_recipeResults[i]),
                               ),
                         ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showFoodDetail(FoodItem item) {
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RecipeDetailSheetLocal(
+        item: item,
+        mealSlot: _mealSlot,
+        services: widget.services,
+        onSave: _saveResult,
       ),
     );
   }
@@ -1138,7 +1266,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                           itemBuilder: (ctx, i) =>
                               _FoodListTile(
                                 item: _searchResults[i],
-                                onAdd: () => _saveItem(_searchResults[i]),
+                                onTap: () => _showFoodDetail(_searchResults[i]),
                               ),
                         ),
             ),
@@ -1533,9 +1661,9 @@ class _CameraBottomTabBar extends StatelessWidget {
 
 class _FoodListTile extends StatelessWidget {
   final FoodItem item;
-  final VoidCallback onAdd;
+  final VoidCallback onTap;
 
-  const _FoodListTile({required this.item, required this.onAdd});
+  const _FoodListTile({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1547,84 +1675,558 @@ class _FoodListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: NutrifotoColors.primary.withValues(alpha: 0.15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            ClipRRect(
               borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: NutrifotoColors.primary.withValues(alpha: 0.15),
+                ),
+                child: NutrifotoImage(
+                  imageUrl: item.imageUrl,
+                  name: item.nameEs,
+                  size: 24,
+                ),
+              ),
             ),
-            child: const Icon(Icons.restaurant_rounded,
-                color: NutrifotoColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.nameEs,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.nameEs,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.metadata['short_description_es'] ?? 'Opción equilibrada y nutritiva.',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(
-                    '${item.nutrition.kcal.toStringAsFixed(0)} kcal  •  P${item.nutrition.proteinG.toStringAsFixed(0)}g  C${item.nutrition.carbsG.toStringAsFixed(0)}g  G${item.nutrition.fatG.toStringAsFixed(0)}g',
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 11)),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onAdd,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    NutrifotoColors.primary,
-                    NutrifotoColors.primarySoft
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(10),
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                      '${item.nutrition.kcal.toStringAsFixed(0)} kcal  •  P${item.nutrition.proteinG.toStringAsFixed(0)}g  C${item.nutrition.carbsG.toStringAsFixed(0)}g  G${item.nutrition.fatG.toStringAsFixed(0)}g',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 11)),
+                ],
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
-          ),
-        ],
+            const Icon(Icons.chevron_right, color: Colors.white24),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _NutrientBadge extends StatelessWidget {
-  final String label;
-  final double value;
-  final String unit;
-  final Color color;
+class _RecipeResultCard extends StatelessWidget {
+  final FoodItem item;
+  final VoidCallback onTap;
 
-  const _NutrientBadge(this.label, this.value, this.unit, this.color);
+  const _RecipeResultCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          color: NutrifotoColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  child: AspectRatio(
+                    aspectRatio: 1.4,
+                    child: NutrifotoImage(
+                      imageUrl: item.imageUrl,
+                      name: item.nameEs,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
+                        stops: const [0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: NutrifotoColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${item.nutrition.kcal.round()} Kcal',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.nameEs,
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, letterSpacing: -0.5),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    item.metadata['short_description_es'] ?? 'Receta balanceada y nutritiva ideal para tu plan diario.',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _MacroResultMini(label: 'PROT', value: item.nutrition.proteinG, target: 176, color: Colors.blue),
+                      _MacroResultMini(label: 'CARBS', value: item.nutrition.carbsG, target: 231, color: Colors.green),
+                      _MacroResultMini(label: 'GRASAS', value: item.nutrition.fatG, target: 63, color: Colors.orange),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroResultMini extends StatelessWidget {
+  final String label;
+  final double value;
+  final double target;
+  final Color color;
+
+  const _MacroResultMini({
+    required this.label,
+    required this.value,
+    required this.target,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value / target).clamp(0.0, 1.0);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: CircularProgressIndicator(
+                value: percent,
+                strokeWidth: 4,
+                backgroundColor: color.withValues(alpha: 0.1),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            Text(
+              '${(percent * 100).toInt()}%',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.38),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${value.round()}g',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecipeDetailSheetLocal extends StatefulWidget {
+  final FoodItem item;
+  final MealSlot mealSlot;
+  final AppServices services;
+  final Function(FoodItem) onSave;
+  const _RecipeDetailSheetLocal({required this.item, required this.mealSlot, required this.services, required this.onSave});
+  @override
+  State<_RecipeDetailSheetLocal> createState() => _RecipeDetailSheetLocalState();
+}
+
+class _RecipeDetailSheetLocalState extends State<_RecipeDetailSheetLocal> {
+  late double _grams;
+  late double _portions;
+  bool _isGramsMode = false;
+  String? _instructionsEs;
+  bool _loadingInstructions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _grams = widget.item.portion.amount;
+    _portions = 1.0;
+    _loadInstructions();
+  }
+
+  Future<void> _loadInstructions() async {
+    // Si ya tenemos instrucciones en español en el metadata (estáticos), las usamos de inmediato
+    if (widget.item.metadata['instructions_es'] != null) {
+      setState(() {
+        _instructionsEs = widget.item.metadata['instructions_es'];
+        _loadingInstructions = false;
+      });
+      return;
+    }
+
+    if (widget.item.source != FoodSource.spoonacular) {
+      // Intentar generar con Gemini si no es de Spoonacular
+      setState(() => _loadingInstructions = true);
+      try {
+        final aiInstructions = await widget.services.geminiNlpService.generateRecipeInstructions(widget.item.nameEs);
+        if (mounted) {
+          setState(() {
+            _instructionsEs = aiInstructions;
+            _loadingInstructions = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _loadingInstructions = false);
+      }
+      return;
+    }
+    
+    setState(() => _loadingInstructions = true);
+    try {
+      final updatedItem = await widget.services.foodOrchestrator.translateRecipeDetails(widget.item);
+      if (mounted) {
+        setState(() {
+          _instructionsEs = updatedItem.metadata['instructions_es'];
+          _loadingInstructions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingInstructions = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double currentGrams = _isGramsMode ? _grams : _portions * widget.item.portion.amount;
+    final ratio = currentGrams / widget.item.portion.amount;
+    final kcal = widget.item.nutrition.kcal * ratio;
+    final protein = widget.item.nutrition.proteinG * ratio;
+    final carbs = widget.item.nutrition.carbsG * ratio;
+    final fat = widget.item.nutrition.fatG * ratio;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.6,
+      maxChildSize: 0.98,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+            color: NutrifotoColors.bg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(28),
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 32),
+            ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: AspectRatio(
+                    aspectRatio: 1.5,
+                    child: NutrifotoImage(imageUrl: widget.item.imageUrl, name: widget.item.nameEs))),
+            const SizedBox(height: 32),
+            Text(widget.item.nameEs, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.0)),
+            const SizedBox(height: 8),
+            Text(
+              widget.item.metadata['short_description_es'] ?? 'Una opción nutritiva para tu registro diario.',
+              style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.6), fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: 40),
+            
+            // Mode Switcher
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16)),
+              child: Row(
+                children: [
+                  Expanded(child: _ToggleBtn(label: 'PORCIONES', selected: !_isGramsMode, onTap: () => setState(() => _isGramsMode = false))),
+                  Expanded(child: _ToggleBtn(label: 'GRAMOS', selected: _isGramsMode, onTap: () => setState(() => _isGramsMode = true))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (_isGramsMode) ...[
+              Text('Cantidad: ${_grams.round()} g', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: NutrifotoColors.primary)),
+              Slider(value: _grams, min: 10, max: 1000, divisions: 99, activeColor: NutrifotoColors.primary, onChanged: (v) => setState(() => _grams = v)),
+            ] else ...[
+              Text('Porciones: ${_portions.toStringAsFixed(1)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: NutrifotoColors.accentBlue)),
+              Slider(value: _portions, min: 0.5, max: 8.0, divisions: 15, activeColor: NutrifotoColors.accentBlue, onChanged: (v) => setState(() => _portions = v)),
+            ],
+            const SizedBox(height: 40),
+            
+            // Macro Info con Círculos de Progreso
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _CircularMacro(
+                    label: 'Calorías',
+                    value: kcal,
+                    unit: 'kcal',
+                    target: 2200,
+                    color: Colors.orange,
+                  ),
+                  _CircularMacro(
+                    label: 'Prot',
+                    value: protein,
+                    unit: 'g',
+                    target: 176,
+                    color: Colors.blue,
+                  ),
+                  _CircularMacro(
+                    label: 'Carbs',
+                    value: carbs,
+                    unit: 'g',
+                    target: 231,
+                    color: Colors.green,
+                  ),
+                  _CircularMacro(
+                    label: 'Grasa',
+                    value: fat,
+                    unit: 'g',
+                    target: 63,
+                    color: Colors.red,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 40),
+            const Text('PASOS DE PREPARACIÓN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NutrifotoColors.primary, letterSpacing: 1.0)),
+            const SizedBox(height: 16),
+            if (_loadingInstructions)
+              const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2, color: NutrifotoColors.primary)))
+            else if (_instructionsEs != null)
+              ..._instructionsEs!
+                  .replaceAll(RegExp(r'<[^>]*>'), '')
+                  .split(RegExp(r'\.(?=\s|[A-Z])|\n|;'))
+                  .where((s) => s.trim().length > 3)
+                  .map((s) => s.trim())
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map((e) => _PreparationStepLocal(number: e.key + 1, text: e.value.endsWith('.') ? e.value : '${e.value}.'))
+            else
+              const Text('1. Preparar los ingredientes base.\n2. Cocinar siguiendo las indicaciones nutricionales.\n3. Servir y disfrutar de forma saludable.', style: TextStyle(color: Colors.white60, height: 1.6)),
+
+            const SizedBox(height: 48),
+            SizedBox(
+              width: double.infinity,
+              height: 64,
+              child: FilledButton(
+                onPressed: () {
+                  final finalItem = FoodItem(
+                    source: widget.item.source,
+                    itemId: widget.item.itemId,
+                    nameEs: widget.item.nameEs,
+                    portion: Portion(amount: currentGrams, unit: 'g'),
+                    nutrition: Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat),
+                    imageUrl: widget.item.imageUrl,
+                  );
+                  widget.onSave(finalItem);
+                  Navigator.pop(context);
+                },
+                style: FilledButton.styleFrom(backgroundColor: NutrifotoColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                child: const Text('REGISTRAR COMIDA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  final String label; final bool selected; final VoidCallback onTap;
+  const _ToggleBtn({required this.label, required this.selected, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(color: selected ? NutrifotoColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+        child: Center(child: Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white54, fontWeight: FontWeight.w800, fontSize: 12))),
+      ),
+    );
+  }
+}
+
+class _CircularMacro extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  final double target;
+  final Color color;
+
+  const _CircularMacro({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.target,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value / target).clamp(0.0, 1.0);
+    
     return Column(
       children: [
-        Text(label,
-            style: TextStyle(
-                color: color.withValues(alpha: 0.7),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 58,
+              height: 58,
+              child: CircularProgressIndicator(
+                value: percent,
+                strokeWidth: 5,
+                backgroundColor: color.withValues(alpha: 0.1),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            Text(
+              '${(percent * 100).toInt()}%',
+              style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        Text('${value.toStringAsFixed(1)}$unit',
-            style: TextStyle(
-                color: color, fontSize: 16, fontWeight: FontWeight.w800)),
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.4),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${value.round()}$unit',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _PreparationStepLocal extends StatelessWidget {
+  final int number;
+  final String text;
+  const _PreparationStepLocal({required this.number, required this.text});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24, height: 24,
+            decoration: const BoxDecoration(color: NutrifotoColors.primary, shape: BoxShape.circle),
+            child: Center(child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4))),
+        ],
+      ),
     );
   }
 }

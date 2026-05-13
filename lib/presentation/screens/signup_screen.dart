@@ -291,11 +291,11 @@ class _SignupScreenState extends State<SignupScreen>
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildOptionsPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         children: [
-          const Spacer(flex: 2),
+          const SizedBox(height: 60),
 
           // Ícono
           Container(

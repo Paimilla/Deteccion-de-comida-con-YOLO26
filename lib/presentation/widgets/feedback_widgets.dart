@@ -2,37 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'nutrifoto_ui.dart';
 
-class LoadingBlock extends StatelessWidget {
-  final String message;
-
-  const LoadingBlock({super.key, this.message = 'Cargando...'});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: NutrifotoColors.textMuted),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// LoadingBlock ha sido movido a nutrifoto_ui.dart con animaciones mejoradas.
 
 class ErrorBlock extends StatelessWidget {
   final String message;

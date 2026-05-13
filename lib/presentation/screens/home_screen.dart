@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
@@ -11,6 +12,10 @@ import '../widgets/app_bottom_nav.dart';
 import '../widgets/skeleton_loader.dart';
 import '../widgets/swipeable_food_card.dart';
 import '../widgets/smart_substitution_sheet.dart';
+import '../widgets/edit_food_entry_sheet.dart';
+import '../widgets/nutrifoto_ui.dart';
+import '../widgets/ambient_background.dart';
+import '../../application/meal_clipboard.dart';
 
 class HomeScreen extends StatefulWidget {
   final AppServices services;
@@ -25,8 +30,9 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   double _kcal = 0;
   double _kcalGoal = 2200;
-  // int _hydration = 0;
-  // final int _hydrationGoal = 2800;
+  double _proteinTotal = 0;
+  double _carbsTotal = 0;
+  double _fatTotal = 0;
   bool _isLoading = false;
   DateTime _selectedDate = _dateOnly(DateTime.now());
   late DateTime _weekStart;
@@ -51,14 +57,6 @@ class _HomeScreenState extends State<HomeScreen>
   int _currentStreak = 0;
   int _totalDays = 0;
 
-  MealSlot _getCurrentMealSlot() {
-    final hour = DateTime.now().hour;
-    if (hour < 11) return MealSlot.desayuno;
-    if (hour < 15) return MealSlot.almuerzo;
-    if (hour < 18) return MealSlot.once;
-    if (hour < 21) return MealSlot.cena;
-    return MealSlot.snack;
-  }
 
   IconData _iconForMeal(MealSlot slot) {
     switch (slot) {
@@ -83,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(seconds: 11),
     )..repeat(reverse: true);
     _weekStart = _startOfWeek(_selectedDate);
+    _loadStreakData();
     _refreshSummary();
   }
 
@@ -90,6 +89,30 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _ambientController.dispose();
     super.dispose();
+  }
+
+  /// Carga datos de streak persistidos
+  Future<void> _loadStreakData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _currentStreak = prefs.getInt('current_streak') ?? 0;
+        _totalDays = prefs.getInt('total_days') ?? 0;
+      });
+    } catch (e) {
+      // Fallar silenciosamente si SharedPreferences no funciona
+    }
+  }
+
+  /// Guarda datos de streak persistidos
+  Future<void> _saveStreakData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('current_streak', _currentStreak);
+      await prefs.setInt('total_days', _totalDays);
+    } catch (e) {
+      // Fallar silenciosamente si SharedPreferences no funciona
+    }
   }
 
   static DateTime _dateOnly(DateTime date) =>
@@ -141,16 +164,32 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _kcal = summary.kcalTotal;
       _kcalGoal = summary.goals.kcal;
-      // _hydration = summary.hydrationMl; // Para uso futuro
+      _proteinTotal = summary.proteinTotal;
+      _carbsTotal = summary.carbsTotal;
+      _fatTotal = summary.fatTotal;
       _mealKcal = mealMap;
       _mealEntries = entryMap;
       _isLoading = false;
-      // Update streak (simplified - enhance with actual persistence later)
-      if (summary.entries.isNotEmpty) {
-        _currentStreak = math.max(_currentStreak, 1);
-        _totalDays = _totalDays + (summary.entries.isNotEmpty && _totalDays == 0 ? 1 : 0);
-      }
     });
+
+    // Update streak based on history
+    _updateRealStreak();
+  }
+
+  Future<void> _updateRealStreak() async {
+    final summaries = await widget.services.historyUseCases.lastNDays(30);
+    final completedDays = summaries
+        .where((s) => s.entries.isNotEmpty)
+        .map((s) => s.day)
+        .toList();
+
+    if (mounted) {
+      setState(() {
+        _currentStreak = widget.services.insightsUseCases.streakDays(completedDays);
+        _totalDays = summaries.where((s) => s.entries.isNotEmpty).length;
+      });
+      await _saveStreakData();
+    }
   }
 
   Future<void> _changeDay(DateTime day) async {
@@ -194,41 +233,43 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _deleteEntry(String entryId) async {
     HapticFeedback.mediumImpact();
     await widget.services.trackingUseCases.removeFoodEntry(entryId);
-    if (mounted) {
-      await _refreshSummary();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.delete_outline, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Alimento eliminado'),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
+    if (!mounted) return;
+    await _refreshSummary();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Expanded(child: Text('Alimento eliminado')),
+          ],
         ),
-      );
-    }
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _duplicateEntry(DiaryEntry entry) async {
     HapticFeedback.lightImpact();
     await widget.services.trackingUseCases.duplicateFoodEntry(entry);
-    if (mounted) {
-      await _refreshSummary();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text('${entry.food.nameEs} duplicado'),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
+    if (!mounted) return;
+    await _refreshSummary();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${entry.food.nameEs} duplicado')),
+          ],
         ),
-      );
-    }
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _openSubstitution(DiaryEntry entry) async {
@@ -241,6 +282,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
     if (result != null && mounted) {
       await _refreshSummary();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -264,13 +307,20 @@ class _HomeScreenState extends State<HomeScreen>
     );
     if (original != null && mounted) {
       await _refreshSummary();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Text('${entry.food.nameEs} movido a ${newSlot.label}'),
+              Expanded(
+                child: Text(
+                  '${entry.food.nameEs} movido a ${newSlot.label}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           action: SnackBarAction(
@@ -286,6 +336,95 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _showEditSheet(DiaryEntry entry) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditFoodEntrySheet(
+        entry: entry,
+        onSave: (updated) async {
+          await widget.services.trackingUseCases.updateFoodEntry(updated);
+          if (mounted) await _refreshSummary();
+        },
+      ),
+    );
+  }
+
+  void _copyEntry(DiaryEntry entry) {
+    MealClipboard.copy(entry);
+    setState(() {}); // Rebuild to show Paste buttons
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Alimento copiado al portapapeles'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Future<void> _pasteEntry(MealSlot slot) async {
+    final entry = MealClipboard.copiedEntry;
+    if (entry == null) return;
+
+    await widget.services.trackingUseCases.addFoodEntry(
+      mealSlot: slot,
+      food: entry.food,
+      timestamp: _selectedDate,
+    );
+    if (mounted) await _refreshSummary();
+  }
+
+  void _showEntryOptions(DiaryEntry entry) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.swap_horiz_rounded, color: NutrifotoColors.primary),
+              title: const Text('Sustitución Inteligente', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openSubstitution(entry);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_rounded, color: Colors.blue),
+              title: const Text('Copiar', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _copyEntry(entry);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: Colors.amber),
+              title: const Text('Editar cantidad', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditSheet(entry);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+              title: const Text('Borrar', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.red)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _deleteEntry(entry.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
@@ -295,9 +434,13 @@ class _HomeScreenState extends State<HomeScreen>
     final kcalPct = (_kcalGoal <= 0 ? 0 : _kcal / _kcalGoal)
         .clamp(0, 1)
         .toDouble();
-    final proteinG = (_kcal * 0.32 / 4);
-    final fatG = (_kcal * 0.26 / 9);
-    final carbsG = (_kcal * 0.42 / 4);
+    
+    // Macros reales del resumen diario
+    final proteinG = _proteinTotal;
+    final fatG = _fatTotal;
+    final carbsG = _carbsTotal;
+
+    // Objetivos: mismo cálculo que para actuals pero basado en kcal goal
     final proteinTarget = (_kcalGoal * 0.32 / 4);
     final carbsTarget = (_kcalGoal * 0.42 / 4);
     final fatTarget = (_kcalGoal * 0.26 / 9);
@@ -322,20 +465,16 @@ class _HomeScreenState extends State<HomeScreen>
         '${_selectedDate.day} ${monthNames[_selectedDate.month - 1]} ${_selectedDate.year}';
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       bottomNavigationBar: const AppBottomNav(currentRoute: AppRoutes.hoy),
-      body: AnimatedScreenBody(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _HomeBackdrop(animation: _ambientController),
-              ),
-            ),
-            RefreshIndicator(
-              onRefresh: _refreshSummary,
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
+      body: AmbientBackground(
+        child: AnimatedScreenBody(
+          child: RefreshIndicator(
+            onRefresh: _refreshSummary,
+            color: NutrifotoColors.primary,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
                   Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -368,47 +507,30 @@ class _HomeScreenState extends State<HomeScreen>
                               children: [
                                 Row(
                                   children: [
-                                    _TopIconButton(onTap: () {}),
+                                    _TopIconButton(
+                                      onTap: () => Navigator.pushNamed(context, AppRoutes.perfil),
+                                    ),
                                     const Spacer(),
                                     _HeaderQuickActions(
-                                      onTapAchievements: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          AppRoutes.achievements,
-                                        );
-                                      },
-                                      onTapStatistics: () {
-                                        Navigator.pushNamed(
-                                          context,
-                                          AppRoutes.statistics,
-                                        );
-                                      },
+                                      onTapPlan: () => Navigator.pushNamed(context, AppRoutes.plan),
+                                      onTapAchievements: () => Navigator.pushNamed(context, AppRoutes.achievements),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                const Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '¡Hola!',
-                                    style: TextStyle(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                                const SizedBox(height: 12),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    greeting,
+                                    '¡Hola! $greeting',
                                     style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.white70,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.5,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     _WeekArrowButton(
@@ -433,18 +555,9 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 20),
                                 AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 450),
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: ScaleTransition(
-                                        scale: animation,
-                                        child: child,
-                                      ),
-                                    );
-                                  },
+                                  duration: const Duration(milliseconds: 600),
                                   child: _KcalRing(
                                     key: ValueKey(dateKey),
                                     kcal: _kcal,
@@ -452,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     progress: kcalPct,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 20),
                                 _MacroSummary(
                                   proteinCurrent: proteinG,
                                   proteinTarget: proteinTarget,
@@ -495,14 +608,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       SizedBox(width: 6),
                                       Expanded(
-                                        child: Text(
-                                          'Batido de proteina natural',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                        child: _DynamicTip(),
                                       ),
                                     ],
                                   ),
@@ -526,11 +632,14 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       child: Column(
                         children: [
-                          // Smart Suggestions
+                          // AI Coach Suggestions
                           _SmartSuggestions(
                             currentKcal: _kcal,
                             goalKcal: _kcalGoal,
-                            currentStreak: _currentStreak,
+                            protein: _proteinTotal,
+                            carbs: _carbsTotal,
+                            fat: _fatTotal,
+                            services: widget.services,
                           ),
                           const SizedBox(height: 12),
                           // Streak indicator
@@ -542,7 +651,7 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 6),
                           // Skeleton loaders during loading
                           if (_isLoading)
-                            ...List.generate(3, (_) => const SkeletonMealCard())
+                            ...List.generate(3, (_) => SkeletonMealCard())
                           else
                             ...MealSlot.values.toList().asMap().entries.map((
                               entry,
@@ -564,6 +673,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   onDuplicateEntry: _duplicateEntry,
                                   onSubstituteEntry: _openSubstitution,
                                   onMoveEntry: _moveEntry,
+                                  onTapEntry: _showEditSheet,
+                                  onMoreEntry: _showEntryOptions,
+                                  onPaste: () => _pasteEntry(slot),
                                   services: widget.services,
                                 ),
                               );
@@ -595,7 +707,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           ),
                                         ],
                                       ),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Text('🎉', style: TextStyle(fontSize: 22)),
@@ -615,7 +727,6 @@ class _HomeScreenState extends State<HomeScreen>
                                 );
                               },
                             ),
-                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
@@ -623,14 +734,15 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      
     );
   }
 }
 
 // (Replaced by Camera-First flow)
+
 
 
 class _TopIconButton extends StatelessWidget {
@@ -644,102 +756,48 @@ class _TopIconButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Container(
-        width: 56,
-        height: 56,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: ClipRRect(
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(16),
-          child: Center(
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Image.asset(
-                'assets/images/logo_cat_strawberry.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Stack(
-                    children: [
-                      Container(color: const Color(0xFF131A35)),
-                      Positioned(
-                        bottom: 6,
-                        left: 8,
-                        right: 8,
-                        child: Container(
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD73856),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                      const Positioned(
-                        bottom: 25,
-                        left: 9,
-                        child: Icon(
-                          Icons.eco,
-                          size: 14,
-                          color: Color(0xFF60D86A),
-                        ),
-                      ),
-                      const Positioned(
-                        top: 10,
-                        left: 14,
-                        child: Icon(
-                          Icons.pets_rounded,
-                          size: 26,
-                          color: Color(0xFF0A0B10),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
+        child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 26),
       ),
     );
   }
 }
 
 class _HeaderQuickActions extends StatelessWidget {
+  final VoidCallback onTapPlan;
   final VoidCallback onTapAchievements;
-  final VoidCallback onTapStatistics;
 
   const _HeaderQuickActions({
+    required this.onTapPlan,
     required this.onTapAchievements,
-    required this.onTapStatistics,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           _HeaderActionIcon(
+            icon: Icons.calendar_today_rounded,
+            tooltip: 'Mi Plan',
+            onTap: onTapPlan,
+          ),
+          _HeaderActionIcon(
             icon: Icons.emoji_events_rounded,
             tooltip: 'Logros',
             onTap: onTapAchievements,
-          ),
-          Container(
-            width: 1,
-            height: 18,
-            color: Colors.white.withValues(alpha: 0.35),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-          _HeaderActionIcon(
-            icon: Icons.bar_chart_rounded,
-            tooltip: 'Estadisticas',
-            onTap: onTapStatistics,
           ),
         ],
       ),
@@ -813,43 +871,68 @@ class _KcalRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final progressVal = progress.clamp(0.0, 1.0);
+    
     return SizedBox(
-      width: 146,
-      height: 146,
+      width: 150,
+      height: 150,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          SizedBox(
-            width: 132,
-            height: 132,
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 10,
-              backgroundColor: const Color(0x5AFFFFFF),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFFF2ECFF),
-              ),
+          // Background Glow
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: NutrifotoColors.primary.withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+              ],
             ),
           ),
+          
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: progressVal),
+            duration: const Duration(seconds: 2),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return SizedBox(
+                width: 130,
+                height: 130,
+                child: CircularProgressIndicator(
+                  value: value,
+                  strokeWidth: 12,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              );
+            },
+          ),
+          
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                kcal.toStringAsFixed(0),
+                kcal.round().toString(),
                 style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 38,
+                  fontWeight: FontWeight.w900,
                   color: Colors.white,
+                  letterSpacing: -1,
                 ),
               ),
               Text(
-                'de ${goal.toStringAsFixed(0)} kcal',
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${(progress * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(fontSize: 11, color: Colors.white60),
+                'de ${goal.round()}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
               ),
             ],
           ),
@@ -911,45 +994,46 @@ class _MacroSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white30),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _MacroCell(
-              current: proteinCurrent,
-              target: proteinTarget,
-              title: 'Proteina',
-              color: const Color(0xFF66BEFF),
-              icon: Icons.open_with,
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      opacity: 0.08,
+      borderRadius: BorderRadius.circular(20),
+      child: Semantics(
+        label: 'Resumen de macronutrientes',
+        container: true,
+        child: Row(
+          children: [
+            Expanded(
+              child: _MacroCell(
+                current: proteinCurrent,
+                target: proteinTarget,
+                title: 'Proteína',
+                color: const Color(0xFF66BEFF),
+                icon: Icons.open_with,
+              ),
             ),
-          ),
-          const _MacroDivider(),
-          Expanded(
-            child: _MacroCell(
-              current: carbsCurrent,
-              target: carbsTarget,
-              title: 'Carbos',
-              color: const Color(0xFFFFD35F),
-              icon: Icons.grain,
+            const _MacroDivider(),
+            Expanded(
+              child: _MacroCell(
+                current: carbsCurrent,
+                target: carbsTarget,
+                title: 'Carbos',
+                color: const Color(0xFFFFD35F),
+                icon: Icons.grain,
+              ),
             ),
-          ),
-          const _MacroDivider(),
-          Expanded(
-            child: _MacroCell(
-              current: fatsCurrent,
-              target: fatsTarget,
-              title: 'Grasas',
-              color: const Color(0xFFD8C8FF),
-              icon: Icons.opacity_outlined,
+            const _MacroDivider(),
+            Expanded(
+              child: _MacroCell(
+                current: fatsCurrent,
+                target: fatsTarget,
+                title: 'Grasas',
+                color: const Color(0xFFD8C8FF),
+                icon: Icons.opacity_outlined,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1103,6 +1187,9 @@ class _MealCard extends StatefulWidget {
   final Function(DiaryEntry)? onDuplicateEntry;
   final Function(DiaryEntry)? onSubstituteEntry;
   final Function(DiaryEntry, MealSlot)? onMoveEntry;
+  final Function(DiaryEntry)? onTapEntry;
+  final Function(DiaryEntry)? onMoreEntry;
+  final VoidCallback? onPaste;
   final AppServices? services;
 
   const _MealCard({
@@ -1116,6 +1203,9 @@ class _MealCard extends StatefulWidget {
     this.onDuplicateEntry,
     this.onSubstituteEntry,
     this.onMoveEntry,
+    this.onTapEntry,
+    this.onMoreEntry,
+    this.onPaste,
     this.services,
   });
 
@@ -1279,6 +1369,23 @@ class _MealCardState extends State<_MealCard>
                         ],
                       ),
                     ),
+                    const SizedBox(width: 14),
+                    // Paste button (if clipboard has data)
+                    if (MealClipboard.hasData && widget.onPaste != null)
+                      GestureDetector(
+                        onTap: widget.onPaste,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                          ),
+                          child: const Icon(Icons.paste_rounded, size: 22, color: Colors.blue),
+                        ),
+                      ),
                     Container(
                       width: 50,
                       height: 50,
@@ -1326,6 +1433,8 @@ class _MealCardState extends State<_MealCard>
                                   onTapSubstitute: widget.services != null
                                       ? () => widget.onSubstituteEntry?.call(entry)
                                       : null,
+                                  onTap: () => widget.onTapEntry?.call(entry),
+                                  onMore: () => widget.onMoreEntry?.call(entry),
                                 ),
                               ),
                             ),
@@ -1401,73 +1510,6 @@ class _AnimatedMealEntry extends StatelessWidget {
   }
 }
 
-class _HomeBackdrop extends StatelessWidget {
-  final Animation<double> animation;
-
-  const _HomeBackdrop({required this.animation});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        return CustomPaint(
-          size: Size.infinite,
-          painter: _HomeBackdropPainter(
-            progress: animation.value,
-            isDark: isDark,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HomeBackdropPainter extends CustomPainter {
-  final double progress;
-  final bool isDark;
-
-  _HomeBackdropPainter({required this.progress, required this.isDark});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3
-      ..color = (isDark ? const Color(0x2D88A0FF) : const Color(0x1F7E97D8));
-
-    final yBase = size.height * 0.58;
-    for (var i = 0; i < 3; i++) {
-      final path = Path();
-      final y = yBase + i * 46;
-      path.moveTo(-20, y);
-      for (double x = -20; x <= size.width + 20; x += 16) {
-        final wave = math.sin((x / 95) + (progress * 6) + i) * (8 + i * 2);
-        path.lineTo(x, y + wave);
-      }
-      canvas.drawPath(path, paint);
-    }
-
-    final dotPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = (isDark ? const Color(0x357EC2FF) : const Color(0x267B95DE));
-
-    for (var i = 0; i < 20; i++) {
-      final x = ((i * 63) + (progress * 160)) % (size.width + 40) - 20;
-      final y =
-          size.height * 0.52 + (i % 6) * 38 + math.cos(progress * 6 + i) * 5;
-      canvas.drawCircle(Offset(x, y), 1.4, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _HomeBackdropPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.isDark != isDark;
-  }
-}
-
 class _HomeHeaderPainter extends CustomPainter {
   final double progress;
 
@@ -1506,185 +1548,149 @@ class _HomeHeaderPainter extends CustomPainter {
     return oldDelegate.progress != progress;
   }
 }
-
 // ============================================================================
-// SMART SUGGESTIONS - Recomendaciones contextuales
+// AI COACH CARD - Recomendaciones inteligentes con Gemini
 // ============================================================================
 
-class _SmartSuggestions extends StatelessWidget {
+class _SmartSuggestions extends StatefulWidget {
   final double currentKcal;
   final double goalKcal;
-  final int currentStreak;
+  final double protein;
+  final double carbs;
+  final double fat;
+  final AppServices services;
 
   const _SmartSuggestions({
     required this.currentKcal,
     required this.goalKcal,
-    required this.currentStreak,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+    required this.services,
   });
 
-  List<_SuggestionItem> _generateSuggestions() {
-    final suggestions = <_SuggestionItem>[];
-    final hour = DateTime.now().hour;
-    final progress = goalKcal > 0 ? currentKcal / goalKcal : 0.0;
+  @override
+  State<_SmartSuggestions> createState() => _SmartSuggestionsState();
+}
 
-    // Time-based suggestions
-    if (hour >= 6 && hour < 10) {
-      suggestions.add(_SuggestionItem(
-        text: '¿Ya desayunaste?',
-        icon: Icons.breakfast_dining_rounded,
-        color: const Color(0xFFFFC766),
-      ));
-    } else if (hour >= 12 && hour < 14) {
-      suggestions.add(_SuggestionItem(
-        text: 'Hora del almuerzo',
-        icon: Icons.lunch_dining_rounded,
-        color: const Color(0xFF6EEB8E),
-      ));
-    } else if (hour >= 16 && hour < 18) {
-      suggestions.add(_SuggestionItem(
-        text: 'Snack saludable',
-        icon: Icons.apple,
-        color: const Color(0xFFFF6B6B),
-      ));
-    } else if (hour >= 19 && hour < 21) {
-      suggestions.add(_SuggestionItem(
-        text: 'Cena ligera',
-        icon: Icons.dinner_dining_rounded,
-        color: const Color(0xFF7FA6FF),
-      ));
+class _SmartSuggestionsState extends State<_SmartSuggestions> {
+  String? _advice;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAdvice();
+  }
+
+  @override
+  void didUpdateWidget(_SmartSuggestions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Solo refrescar si el cambio de calorías es significativo (>50 kcal)
+    if ((widget.currentKcal - oldWidget.currentKcal).abs() > 50) {
+      _fetchAdvice();
     }
+  }
 
-    // Progress-based suggestions
-    if (progress > 0.9) {
-      suggestions.add(_SuggestionItem(
-        text: '¡Casi completas tu meta!',
-        icon: Icons.emoji_events_rounded,
-        color: const Color(0xFFFFD700),
-      ));
-    } else if (progress < 0.3 && hour > 14) {
-      final remaining = (goalKcal - currentKcal).toInt();
-      suggestions.add(_SuggestionItem(
-        text: '$remaining kcal disponibles',
-        icon: Icons.info_outline_rounded,
-        color: const Color(0xFF66BEFF),
-      ));
+  Future<void> _fetchAdvice() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+
+    try {
+      final advice = await widget.services.geminiNlpService.generateNutritionalAdvice(
+        kcalLeft: widget.goalKcal - widget.currentKcal,
+        proteinLeft: 150 - widget.protein, // Asumiendo meta genérica si no hay perfil
+        carbsLeft: 250 - widget.carbs,
+        fatLeft: 70 - widget.fat,
+        userName: 'Nutrifoto User',
+      );
+      if (mounted) {
+        setState(() {
+          _advice = advice;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
-
-    // Hydration reminder
-    suggestions.add(_SuggestionItem(
-      text: 'Recuerda beber agua',
-      icon: Icons.water_drop_rounded,
-      color: const Color(0xFF4FC3F7),
-    ));
-
-    return suggestions.take(3).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final suggestions = _generateSuggestions();
-    if (suggestions.isEmpty) return const SizedBox.shrink();
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.06),
+        gradient: LinearGradient(
+          colors: isDark 
+            ? [const Color(0xFF2D1B69), const Color(0xFF1A1A2E)]
+            : [const Color(0xFFF0E7FF), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: NutrifotoColors.primary.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: NutrifotoColors.primary.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lightbulb_outline_rounded,
-                color: Colors.amber.shade600,
-                size: 18,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: NutrifotoColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Sugerencias para ti',
+              const SizedBox(width: 12),
+              const Text(
+                'COACH IA',
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: NutrifotoColors.primary,
                 ),
               ),
+              const Spacer(),
+              if (_loading)
+                const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: NutrifotoColors.primary),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 18, color: NutrifotoColors.primary),
+                  onPressed: _fetchAdvice,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
             ],
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: suggestions
-                .map((s) => _SuggestionChip(
-                      text: s.text,
-                      icon: s.icon,
-                      color: s.color,
-                    ))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SuggestionItem {
-  final String text;
-  final IconData icon;
-  final Color color;
-
-  _SuggestionItem({
-    required this.text,
-    required this.icon,
-    required this.color,
-  });
-}
-
-class _SuggestionChip extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final Color color;
-
-  const _SuggestionChip({
-    required this.text,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.4),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
+          const SizedBox(height: 16),
           Text(
-            text,
+            _advice ?? 'Analizando tu día para darte el mejor consejo...',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: color.withValues(alpha: 0.9),
+              color: isDark ? Colors.white70 : Colors.black87,
+              height: 1.5,
             ),
           ),
         ],
@@ -1804,6 +1810,34 @@ class _StreakIndicator extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DynamicTip extends StatelessWidget {
+  const _DynamicTip();
+
+  static const _tips = [
+    'Batido de proteína natural',
+    'Bebe 2L de agua al día',
+    'Camina 10,000 pasos',
+    'Consume más fibra',
+    'Evita azúcares añadidos',
+    'Prueba el ayuno intermitente',
+    'Duerme 8 horas diarias',
+    'Reduce el consumo de sal',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final tip = _tips[math.Random().nextInt(_tips.length)];
+    return Text(
+      tip,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
       ),
     );
   }

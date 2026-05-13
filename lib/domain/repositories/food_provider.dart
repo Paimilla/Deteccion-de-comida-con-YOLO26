@@ -19,4 +19,14 @@ abstract class VisionProvider {
 abstract class TranslationService {
   Future<String> toEnglish(String textEs);
   Future<String> toSpanish(String textEn);
+  Future<List<String>> translateBatch({
+    required List<String> texts,
+    required String source,
+    required String target,
+  });
+  Future<List<String>> translateAndDescribeBatch({
+    required List<String> titles,
+    required String source,
+    required String target,
+  });
 }

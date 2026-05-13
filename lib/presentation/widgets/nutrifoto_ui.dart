@@ -1,3 +1,5 @@
+import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class NutrifotoColors {
@@ -55,8 +57,7 @@ class NutrifotoColors {
   );
 
   static const assistantGradient = LinearGradient(
-    colors: [Color(0xFF1A2040), Color(0xFF4A28B8), Color(0xFF8C5BFF)],
-    stops: [0.0, 0.5, 1.0],
+    colors: [Color(0xFF3E4B8D), Color(0xFF7A5EFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -93,12 +94,404 @@ class NutrifotoColors {
           blurRadius: 24,
           offset: const Offset(0, 12),
         ),
-        BoxShadow(
-          color: primary.withValues(alpha: 0.08),
-          blurRadius: 12,
-          offset: const Offset(0, -2),
-        ),
       ];
+}
+
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final double blur;
+  final double opacity;
+  final BorderRadius? borderRadius;
+  final Border? border;
+
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.margin,
+    this.blur = 16,
+    this.opacity = 0.12,
+    this.borderRadius,
+    this.border,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: margin,
+      child: ClipRRect(
+        borderRadius: borderRadius ?? BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white : Colors.black).withValues(alpha: opacity),
+              borderRadius: borderRadius ?? BorderRadius.circular(24),
+              border: border ?? Border.all(
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Widgets Nutricionales Globales
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class MacroChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const MacroChip({super.key, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class FoodPlaceholder extends StatelessWidget {
+  final String name;
+  final double size;
+  const FoodPlaceholder({super.key, required this.name, this.size = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    String emoji = '🍽️';
+    final lower = name.toLowerCase();
+    if (lower.contains('pollo') || lower.contains('chicken')) emoji = '🍗';
+    if (lower.contains('arroz') || lower.contains('rice')) emoji = '🍚';
+    if (lower.contains('pan') || lower.contains('bread')) emoji = '🍞';
+    if (lower.contains('leche') || lower.contains('milk')) emoji = '🥛';
+    if (lower.contains('huevo') || lower.contains('egg')) emoji = '🥚';
+    if (lower.contains('carne') || lower.contains('meat')) emoji = '🥩';
+    if (lower.contains('pescado') || lower.contains('fish')) emoji = '🐟';
+    if (lower.contains('fruta') || lower.contains('manzana')) emoji = '🍎';
+    if (lower.contains('queso') || lower.contains('cheese')) emoji = '🧀';
+    if (lower.contains('pasta') || lower.contains('noodle')) emoji = '🍝';
+
+    return Container(
+      color: NutrifotoColors.primary.withValues(alpha: 0.1),
+      child: Center(
+        child: Text(emoji, style: TextStyle(fontSize: size)),
+      ),
+    );
+  }
+}
+
+class NutrifotoImage extends StatelessWidget {
+  final String? imageUrl;
+  final String name;
+  final double size;
+  final BoxFit fit;
+
+  const NutrifotoImage({
+    super.key,
+    required this.imageUrl,
+    required this.name,
+    this.size = 28,
+    this.fit = BoxFit.cover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return FoodPlaceholder(name: name, size: size);
+    }
+
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: fit,
+      placeholder: (context, url) => Container(
+        color: NutrifotoColors.primary.withValues(alpha: 0.1),
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      errorWidget: (context, url, error) =>
+          FoodPlaceholder(name: name, size: size),
+    );
+  }
+}
+
+class LoadingBlock extends StatefulWidget {
+  final String message;
+  const LoadingBlock({super.key, this.message = 'Cargando...'});
+
+  @override
+  State<LoadingBlock> createState() => _LoadingBlockState();
+}
+
+class _LoadingBlockState extends State<LoadingBlock>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.4, end: 1.0).animate(_controller),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.message,
+                  style: const TextStyle(
+                    color: NutrifotoColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SkeletonBox extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double borderRadius;
+
+  const SkeletonBox({
+    super.key,
+    this.width,
+    required this.height,
+    this.borderRadius = 12,
+  });
+
+  @override
+  State<SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor =
+        isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05);
+    final highlightColor =
+        isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.1);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return _ShimmerBox(
+          width: widget.width ?? double.infinity,
+          height: widget.height,
+          borderRadius: widget.borderRadius,
+          progress: _controller.value,
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+        );
+      },
+    );
+  }
+}
+
+class SkeletonCard extends StatefulWidget {
+  const SkeletonCard({super.key});
+
+  @override
+  State<SkeletonCard> createState() => _SkeletonCardState();
+}
+
+class _SkeletonCardState extends State<SkeletonCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05);
+    final highlightColor = isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.1);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: NutrifotoColors.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: Row(
+            children: [
+              _ShimmerBox(
+                width: 52,
+                height: 52,
+                borderRadius: 12,
+                progress: _controller.value,
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ShimmerBox(
+                      width: 140,
+                      height: 14,
+                      progress: _controller.value,
+                      baseColor: baseColor,
+                      highlightColor: highlightColor,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _ShimmerBox(
+                          width: 50,
+                          height: 18,
+                          borderRadius: 6,
+                          progress: _controller.value,
+                          baseColor: baseColor,
+                          highlightColor: highlightColor,
+                        ),
+                        const SizedBox(width: 6),
+                        _ShimmerBox(
+                          width: 40,
+                          height: 18,
+                          borderRadius: 6,
+                          progress: _controller.value,
+                          baseColor: baseColor,
+                          highlightColor: highlightColor,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ShimmerBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double borderRadius;
+  final double progress;
+  final Color baseColor;
+  final Color highlightColor;
+
+  const _ShimmerBox({
+    required this.width,
+    required this.height,
+    this.borderRadius = 4,
+    required this.progress,
+    required this.baseColor,
+    required this.highlightColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [baseColor, highlightColor, baseColor],
+          stops: [
+            (progress - 0.3).clamp(0.0, 1.0),
+            progress.clamp(0.0, 1.0),
+            (progress + 0.3).clamp(0.0, 1.0),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class HeroPanel extends StatefulWidget {
@@ -244,64 +637,6 @@ class _HeroPanelState extends State<HeroPanel>
         ),
       ),
     );
-  }
-}
-
-class GlassCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? margin;
-  final bool animate;
-
-  const GlassCard({
-    super.key,
-    required this.child,
-    this.padding,
-    this.margin,
-    this.animate = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final card = Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xDD1A2743)
-            : theme.colorScheme.surface.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.08),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.white.withValues(alpha: 0.7),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: padding ?? const EdgeInsets.all(14),
-        child: child,
-      ),
-    );
-
-    return card;
   }
 }
 

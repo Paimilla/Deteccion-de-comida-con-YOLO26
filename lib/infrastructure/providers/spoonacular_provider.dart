@@ -30,7 +30,7 @@ class SpoonacularProvider implements RecipeProvider {
 
     try {
       final uri = Uri.parse(
-        '$_baseUrl/recipes/complexSearch?apiKey=$_apiKey&query=$ingredientEn&number=10&addRecipeNutrition=true',
+        '$_baseUrl/recipes/complexSearch?apiKey=$_apiKey&query=$ingredientEn&number=10&addRecipeNutrition=true&addRecipeInformation=true',
       );
 
       final response = await runWithRetry(
@@ -79,7 +79,11 @@ class SpoonacularProvider implements RecipeProvider {
         fatG: fat,
       ),
       imageUrl: row['image']?.toString(),
-      metadata: {'provider_raw_id': row['id']?.toString()},
+      metadata: {
+        'provider_raw_id': row['id']?.toString(),
+        'summary': row['summary']?.toString(),
+        'instructions': row['instructions']?.toString(),
+      },
     );
   }
 

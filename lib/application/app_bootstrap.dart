@@ -9,7 +9,7 @@ import '../infrastructure/services/auth_service.dart';
 import '../infrastructure/services/gemini_nlp_service.dart';
 import '../infrastructure/services/registration_tracker.dart';
 import 'app_services.dart';
-import 'bootstrap_example.dart';
+import 'orchestrator_builder.dart';
 import 'feature_flags.dart';
 import 'usecases/history_usecases.dart';
 import 'usecases/insights_usecases.dart';
@@ -28,7 +28,7 @@ class AppBootstrap {
         defaultValue: 'https://api.nal.usda.gov/fdc/v1',
       ),
       spoonacularApiKey:
-          const String.fromEnvironment('SPOONACULAR_API_KEY', defaultValue: ''),
+          const String.fromEnvironment('SPOONACULAR_API_KEY', defaultValue: '2c69078f5d8c4eecafbb21e3a617fc71'),
       spoonacularBaseUrl: const String.fromEnvironment(
         'SPOONACULAR_BASE_URL',
         defaultValue: 'https://api.spoonacular.com',
@@ -44,15 +44,15 @@ class AppBootstrap {
         defaultValue: 'http://10.0.2.2:8000',
       ),
       geminiApiKey:
-          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: ''),
+          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'AIzaSyBlEOFgEk9y35CzF9mPu0PWTBCWP_bH1WM'),
       edamamAppId:
-          const String.fromEnvironment('EDAMAM_APP_ID', defaultValue: ''),
+          const String.fromEnvironment('EDAMAM_APP_ID', defaultValue: '4141d0d4'),
       edamamAppKey:
-          const String.fromEnvironment('EDAMAM_APP_KEY', defaultValue: ''),
+          const String.fromEnvironment('EDAMAM_APP_KEY', defaultValue: 'a79c06be7a90459dc28ed9ccf5ccc837'),
     );
 
     final chileDatasetJson = await _loadChileDatasetJson();
-    final orchestrator = await BootstrapExample.build(
+    final orchestrator = await OrchestratorBuilder.build(
       config: config,
       chileDatasetJson: chileDatasetJson,
     );
@@ -80,7 +80,7 @@ class AppBootstrap {
     final registrationTracker = RegistrationTracker(
       webhookUrl: const String.fromEnvironment(
         'REGISTRATION_WEBHOOK_URL',
-        defaultValue: '',
+        defaultValue: 'https://script.google.com/macros/s/AKfycbwmkmfrAZSI18TWJdxxoy3cDp3P2QnZDQ71m1p-q1U5YxEc9VtxVQUDT95eOJqhblcI/exec',
       ),
     );
 

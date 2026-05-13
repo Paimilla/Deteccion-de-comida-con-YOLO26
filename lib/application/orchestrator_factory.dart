@@ -9,6 +9,8 @@ import '../infrastructure/providers/openfoodfacts_search_provider.dart';
 import '../infrastructure/providers/spoonacular_provider.dart';
 import '../infrastructure/providers/usda_provider.dart';
 import '../infrastructure/services/api_config.dart';
+import '../infrastructure/services/gemini_nlp_service.dart';
+import '../infrastructure/services/gemini_translation_service.dart';
 import '../infrastructure/services/libretranslate_service.dart';
 import 'food_orchestrator.dart';
 
@@ -68,18 +70,7 @@ class OrchestratorFactory {
     // ── Proveedores de recetas ──
     final recipeProviders = <RecipeProvider>[];
 
-    // Edamam: usa Food Database API como búsqueda de recetas
-    if (config.edamamAppId.isNotEmpty && config.edamamAppKey.isNotEmpty) {
-      recipeProviders.add(EdamamRecipeProvider(
-        appId: config.edamamAppId,
-        appKey: config.edamamAppKey,
-      ));
-    }
-
-    // OpenFoodFacts: siempre disponible
-    recipeProviders.add(offSearch);
-
-    // Spoonacular: si tiene key
+    // 1. Spoonacular: la mejor calidad visual (fotos reales)
     if (config.spoonacularApiKey.isNotEmpty) {
       recipeProviders.add(SpoonacularProvider(
         apiKey: config.spoonacularApiKey,
@@ -87,7 +78,31 @@ class OrchestratorFactory {
       ));
     }
 
+    // 2. Edamam: excelente precisión nutricional
+    if (config.edamamAppId.isNotEmpty && config.edamamAppKey.isNotEmpty) {
+      recipeProviders.add(EdamamRecipeProvider(
+        appId: config.edamamAppId,
+        appKey: config.edamamAppKey,
+      ));
+    }
+
+    // 3. OpenFoodFacts: fallback gratuito
+    recipeProviders.add(offSearch);
+
     final cascadeRecipes = CascadeRecipeProvider(recipeProviders);
+
+    // ── Servicio de Traducción (Gemini como prioridad) ──
+    final geminiNlp = GeminiNlpService(apiKey: config.geminiApiKey);
+    final TranslationService translationService;
+    
+    if (config.geminiApiKey.isNotEmpty) {
+      translationService = GeminiTranslationService(geminiNlp);
+    } else {
+      translationService = LibreTranslateService(
+        baseUrl: config.libreTranslateBaseUrl,
+        apiKey: config.libreTranslateApiKey,
+      );
+    }
 
     return FoodOrchestrator(
       localChileProvider: LocalChileProvider(chileDataset),
@@ -95,10 +110,7 @@ class OrchestratorFactory {
           OpenFoodFactsProvider(baseUrl: config.openFoodFactsBaseUrl),
       usdaProvider: cascadeSearch,
       recipeProvider: cascadeRecipes,
-      translationService: LibreTranslateService(
-        baseUrl: config.libreTranslateBaseUrl,
-        apiKey: config.libreTranslateApiKey,
-      ),
+      translationService: translationService,
       visionProvider: visionProvider,
     );
   }

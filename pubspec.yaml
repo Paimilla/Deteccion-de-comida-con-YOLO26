@@ -16,6 +16,7 @@ dependencies:
   # UI & Design
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
+  fl_chart: ^0.70.2
 
   # Camera & Vision
   camera: ^0.11.0+2
@@ -26,6 +27,7 @@ dependencies:
 
   # Networking
   http: ^1.2.2
+  cached_network_image: ^3.4.1
 
   # Voice & NLP
   speech_to_text: ^7.0.0

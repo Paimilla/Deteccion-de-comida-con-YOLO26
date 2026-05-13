@@ -33,39 +33,120 @@ class FoodOrchestrator {
     final textEn = await translationService.toEnglish(textEs);
     final results = await usdaProvider.searchFood(textEn);
 
-    final translated = <FoodItem>[];
-    for (final item in results) {
-      final translatedName = await translationService.toSpanish(
-        item.nameEn ?? item.nameEs,
-      );
-      translated.add(
-        FoodItem(
-          source: item.source,
-          itemId: item.itemId,
-          nameEs: translatedName,
-          nameEn: item.nameEn,
-          portion: item.portion,
-          nutrition: item.nutrition,
-          confidence: item.confidence,
-          imageUrl: item.imageUrl,
-          metadata: item.metadata,
+    if (results.isEmpty) return const [];
+
+    final List<String> namesToProcess = results.map((e) => e.nameEn ?? e.nameEs).toList();
+    final processedTexts = await translationService.translateAndDescribeBatch(
+      titles: namesToProcess,
+      source: 'inglés',
+      target: 'español',
+    );
+
+    final translatedResults = <FoodItem>[];
+    for (int i = 0; i < results.length; i++) {
+      final item = results[i];
+      String nameEs = item.nameEs;
+      String shortDescEs = 'Un alimento nutritivo detectado en la búsqueda global.';
+
+      if (i < processedTexts.length) {
+        final parts = processedTexts[i].split('|');
+        nameEs = parts[0].trim();
+        if (parts.length > 1) {
+          shortDescEs = parts[1].trim();
+        }
+      }
+
+      final newMetadata = Map<String, dynamic>.from(item.metadata);
+      newMetadata['short_description_es'] = shortDescEs;
+
+      translatedResults.add(
+        item.copyWith(
+          nameEs: nameEs,
+          metadata: newMetadata,
         ),
       );
     }
-    return translated;
+    return translatedResults;
   }
 
   Future<List<FoodItem>> searchRecipesInSpanish(String ingredientEs) async {
-    // Buscar primero con el término en español (OpenFoodFacts lo soporta)
-    final results = await recipeProvider.searchRecipes(ingredientEs);
-    if (results.isNotEmpty) return results;
-
-    // Si no hay resultados, intentar con traducción al inglés
+    // 1. Traducir ingrediente al inglés para máxima compatibilidad con APIs
     final ingredientEn = await translationService.toEnglish(ingredientEs);
-    if (ingredientEn != ingredientEs) {
-      return recipeProvider.searchRecipes(ingredientEn);
+    
+    // 2. Buscar recetas
+    final results = await recipeProvider.searchRecipes(ingredientEn);
+    
+    if (results.isEmpty) {
+      if (ingredientEn != ingredientEs) {
+        return recipeProvider.searchRecipes(ingredientEs);
+      }
+      return const [];
     }
-    return results;
+
+    // 3. Traducir títulos y generar descripciones cortas (mucho más profesional)
+    final List<String> itemsToProcess = results.map((e) => e.nameEn ?? e.nameEs).toList();
+    
+    // Pedimos a Gemini que traduzca y cree una descripción breve de una línea
+    final processedTexts = await translationService.translateAndDescribeBatch(
+      titles: itemsToProcess,
+      source: 'inglés',
+      target: 'español',
+    );
+
+    // 4. Reconstruir los FoodItems
+    final translatedResults = <FoodItem>[];
+    for (int i = 0; i < results.length; i++) {
+      final item = results[i];
+      String nameEs = item.nameEs;
+      String shortDescEs = 'Una opción nutritiva y equilibrada para tu registro.';
+
+      if (i < processedTexts.length) {
+        final parts = processedTexts[i].split('|');
+        nameEs = parts[0].trim();
+        if (parts.length > 1) {
+          shortDescEs = parts[1].trim();
+        }
+      }
+
+      final newMetadata = Map<String, dynamic>.from(item.metadata);
+      newMetadata['short_description_es'] = shortDescEs;
+
+      translatedResults.add(
+        item.copyWith(
+          nameEs: nameEs,
+          metadata: newMetadata,
+        ),
+      );
+    }
+    
+    return translatedResults;
+  }
+
+  /// Traduce los detalles de una receta (summary e instrucciones) on-demand.
+  Future<FoodItem> translateRecipeDetails(FoodItem item) async {
+    final summary = item.metadata['summary']?.toString();
+    final instructions = item.metadata['instructions']?.toString();
+    
+    if ((summary == null || summary.isEmpty) && (instructions == null || instructions.isEmpty)) {
+      return item;
+    }
+
+    final toTranslate = [summary ?? '', instructions ?? ''];
+    final translated = await translationService.translateBatch(
+      texts: toTranslate,
+      source: 'inglés',
+      target: 'español',
+    );
+
+    final newMetadata = Map<String, dynamic>.from(item.metadata);
+    if (translated.isNotEmpty) {
+      newMetadata['summary_es'] = translated[0];
+      if (translated.length > 1) {
+        newMetadata['instructions_es'] = translated[1];
+      }
+    }
+
+    return item.copyWith(metadata: newMetadata);
   }
 
   Future<FoodItem?> classifyFromImage(String imagePath) async {

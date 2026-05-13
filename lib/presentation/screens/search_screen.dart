@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
@@ -42,28 +41,27 @@ class _SearchScreenState extends State<SearchScreen> {
     _argsApplied = true;
   }
 
-  Future<void> _saveItem(FoodItem item) async {
-    if (_saving) {
-      return;
-    }
-    
-    HapticFeedback.mediumImpact();
-    setState(() => _saving = true);
-
-    await widget.services.trackingUseCases.addFoodEntry(
-      mealSlot: _mealSlot,
-      food: item,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-    setState(() => _saving = false);
-    AppNotifier.success(
-      context,
-      '${item.nameEs} agregado en ${_mealSlot.label}',
+  void _showFoodDetail(FoodItem item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _FoodDetailSheet(
+        item: item,
+        mealSlot: _mealSlot,
+        onSave: (finalItem) async {
+          if (_saving) return;
+          setState(() => _saving = true);
+          await widget.services.trackingUseCases.addFoodEntry(
+            mealSlot: _mealSlot,
+            food: finalItem,
+          );
+          if (mounted) {
+            setState(() => _saving = false);
+            AppNotifier.success(context, '${finalItem.nameEs} guardado');
+          }
+        },
+      ),
     );
   }
 
@@ -106,33 +104,32 @@ class _SearchScreenState extends State<SearchScreen> {
     final horizontalPadding = width < 360 ? 12.0 : 16.0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Comidas y Recetas')),
+      appBar: AppBar(title: const Text('Buscador de Alimentos')),
       bottomNavigationBar: const AppBottomNav(currentRoute: AppRoutes.explorar),
       body: AnimatedScreenBody(
         child: ListView(
           padding: EdgeInsets.all(horizontalPadding),
           children: [
             HeroPanel(
-              title: 'Buscar Alimentos',
-              subtitle: 'Consulta por nombre y guarda en tu dia',
+              title: 'Buscador',
+              subtitle: 'Encuentra cualquier alimento y ajusta su porción',
               gradient: NutrifotoColors.searchGradient,
-              trailing: IconButton.filledTonal(
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.recipes),
-                icon: const Icon(Icons.menu_book_outlined),
-              ),
             ),
             const SizedBox(height: 12),
             GlassCard(
               child: Column(
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: const [
-                      _ModeTag(label: 'Alimentos', selected: true),
-                      _ModeTag(label: 'Recetas', selected: false),
-                    ],
+                  const SizedBox(height: 4),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Búsqueda Global',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: NutrifotoColors.primary,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -150,8 +147,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       label: Text(_loading ? 'Buscando...' : 'Buscar'),
                     ),
                   ),
-                  if (_loading)
-                    const LoadingBlock(message: 'Consultando alimentos...'),
+                  if (_loading) ...[
+                    const SizedBox(height: 12),
+                    ...List.generate(3, (index) => const SkeletonCard()),
+                  ],
                   const SizedBox(height: 12),
                   DropdownButtonFormField<MealSlot>(
                     initialValue: _mealSlot,
@@ -182,78 +181,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 message: 'Busca un alimento para ver resultados.',
               ),
             ..._results.map(
-              (item) => GlassCard(
-                margin: const EdgeInsets.only(top: 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: NutrifotoColors.primary.withValues(
-                          alpha: 0.2,
-                        ),
-                        child: const Icon(Icons.restaurant_menu, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.nameEs,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                _MacroChip(
-                                  label: '${item.nutrition.kcal.toInt()} kcal',
-                                  color: Colors.deepOrange,
-                                ),
-                                _MacroChip(
-                                  label: 'P ${item.nutrition.proteinG.toInt()}g',
-                                  color: Colors.blue,
-                                ),
-                                _MacroChip(
-                                  label: 'C ${item.nutrition.carbsG.toInt()}g',
-                                  color: Colors.green,
-                                ),
-                                _MacroChip(
-                                  label: 'G ${item.nutrition.fatG.toInt()}g',
-                                  color: Colors.red.shade300,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Semantics(
-                        button: true,
-                        label: 'Agregar ${item.nameEs} al diario',
-                        child: IconButton(
-                          onPressed: _saving ? null : () => _saveItem(item),
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.add_circle_outline),
-                          tooltip: 'Agregar al diario',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              (item) => _FoodResultCard(
+                item: item,
+                saving: _saving,
+                onTap: () => _showFoodDetail(item),
               ),
             ),
           ],
@@ -263,66 +194,458 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
-class _MacroChip extends StatelessWidget {
-  final String label;
-  final Color color;
+class _FoodResultCard extends StatelessWidget {
+  final FoodItem item;
+  final bool saving;
+  final VoidCallback onTap;
 
-  const _MacroChip({
-    required this.label,
-    required this.color,
+  const _FoodResultCard({
+    required this.item,
+    required this.saving,
+    required this.onTap,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeTag extends StatelessWidget {
-  final String label;
-  final bool selected;
-
-  const _ModeTag({required this.label, required this.selected});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected
-            ? NutrifotoColors.primary.withValues(alpha: 0.3)
-            : (isDark
-                  ? NutrifotoColors.surfaceSoft
-                  : Theme.of(context).colorScheme.surfaceContainerHighest),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: selected
-              ? Colors.black87
-              : (isDark ? Colors.white : Colors.black87),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(top: 24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  child: AspectRatio(
+                    aspectRatio: 1.5, // Slightly smaller than recipes but still large
+                    child: NutrifotoImage(
+                      imageUrl: item.imageUrl,
+                      name: item.nameEs,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                        stops: const [0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 20,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: NutrifotoColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                    ),
+                    child: Text(
+                      '${item.nutrition.kcal.round()} Kcal',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      item.source.name.toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.nameEs,
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, height: 1.1, letterSpacing: -0.5),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.metadata['short_description_es'] ?? 'Un alimento nutritivo detectado en la búsqueda global.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _MacroDot(label: 'PROT', value: item.nutrition.proteinG, target: 176, color: Colors.blue),
+                      _MacroDot(label: 'CARB', value: item.nutrition.carbsG, target: 231, color: Colors.green),
+                      _MacroDot(label: 'GRAS', value: item.nutrition.fatG, target: 63, color: Colors.orange),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: onTap,
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      label: const Text('CONFIGURAR PORCIÓN', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.5)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                        foregroundColor: isDark ? Colors.white : Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+class _MacroDot extends StatelessWidget {
+  final String label;
+  final double value;
+  final double target;
+  final Color color;
+
+  const _MacroDot({
+    required this.label,
+    required this.value,
+    required this.target,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value / target).clamp(0.0, 1.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                value: percent,
+                strokeWidth: 3.5,
+                backgroundColor: color.withValues(alpha: isDark ? 0.1 : 0.05),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            Text(
+              '${(percent * 100).toInt()}%',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white38 : Colors.black38,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${value.round()}g',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Detail Sheet for Search Results
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _FoodDetailSheet extends StatefulWidget {
+  final FoodItem item;
+  final MealSlot mealSlot;
+  final Function(FoodItem) onSave;
+  const _FoodDetailSheet({required this.item, required this.mealSlot, required this.onSave});
+
+  @override
+  State<_FoodDetailSheet> createState() => _FoodDetailSheetState();
+}
+
+class _FoodDetailSheetState extends State<_FoodDetailSheet> {
+  late double _grams;
+  late MealSlot _selectedSlot;
+
+  @override
+  void initState() {
+    super.initState();
+    _grams = widget.item.portion.amount;
+    _selectedSlot = widget.mealSlot;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = _grams / widget.item.portion.amount;
+    final kcal = widget.item.nutrition.kcal * ratio;
+    final protein = widget.item.nutrition.proteinG * ratio;
+    final carbs = widget.item.nutrition.carbsG * ratio;
+    final fat = widget.item.nutrition.fatG * ratio;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: NutrifotoColors.bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(24),
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    width: 80,
+                    height: 80,
+                    child: NutrifotoImage(imageUrl: widget.item.imageUrl, name: widget.item.nameEs),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.item.nameEs, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.item.metadata['short_description_es'] ?? widget.item.source.name.toUpperCase(),
+                        style: const TextStyle(color: NutrifotoColors.primary, fontSize: 13, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Text('Cantidad: ${_grams.round()} g', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: NutrifotoColors.primary)),
+            Slider(
+              value: _grams,
+              min: 5,
+              max: 1000,
+              divisions: 199,
+              activeColor: NutrifotoColors.primary,
+              onChanged: (val) => setState(() => _grams = val),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _CircularMacro(
+                    label: 'Calorías',
+                    value: kcal,
+                    unit: 'kcal',
+                    target: 2200,
+                    color: Colors.orange,
+                  ),
+                  _CircularMacro(
+                    label: 'Prot',
+                    value: protein,
+                    unit: 'g',
+                    target: 176,
+                    color: Colors.blue,
+                  ),
+                  _CircularMacro(
+                    label: 'Carb',
+                    value: carbs,
+                    unit: 'g',
+                    target: 231,
+                    color: Colors.green,
+                  ),
+                  _CircularMacro(
+                    label: 'Gras',
+                    value: fat,
+                    unit: 'g',
+                    target: 63,
+                    color: Colors.red,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Text('Agregar a:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: MealSlot.values.map((slot) => ChoiceChip(
+                label: Text(slot.label),
+                selected: _selectedSlot == slot,
+                onSelected: (val) => setState(() => _selectedSlot = slot),
+              )).toList(),
+            ),
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton(
+                onPressed: () {
+                  final finalItem = FoodItem(
+                    source: widget.item.source,
+                    itemId: widget.item.itemId,
+                    nameEs: widget.item.nameEs,
+                    portion: Portion(amount: _grams, unit: 'g'),
+                    nutrition: Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat),
+                    imageUrl: widget.item.imageUrl,
+                  );
+                  widget.onSave(finalItem);
+                  Navigator.pop(context);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: NutrifotoColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Guardar Alimento', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CircularMacro extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  final double target;
+  final Color color;
+
+  const _CircularMacro({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.target,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value / target).clamp(0.0, 1.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 58,
+              height: 58,
+              child: CircularProgressIndicator(
+                value: percent,
+                strokeWidth: 5,
+                backgroundColor: color.withValues(alpha: isDark ? 0.1 : 0.05),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            Text(
+              '${(percent * 100).toInt()}%',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white38 : Colors.black38,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${value.round()}$unit',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// _MacroChip ha sido movido a nutrifoto_ui.dart como MacroChip (global)

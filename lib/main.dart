@@ -26,16 +26,49 @@ import 'presentation/widgets/nutrifoto_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final services = await AppBootstrap.initialize();
-  final hasUserProfile = await services.trackingUseCases.hasUserProfile();
-  final isLoggedIn = services.authService.isLoggedIn;
-  runApp(
-    NutrifotoApp(
-      services: services,
-      hasUserProfile: hasUserProfile,
-      isLoggedIn: isLoggedIn,
-    ),
-  );
+  try {
+    final services = await AppBootstrap.initialize();
+    final hasUserProfile = await services.trackingUseCases.hasUserProfile();
+    final isLoggedIn = services.authService.isLoggedIn;
+    runApp(
+      NutrifotoApp(
+        services: services,
+        hasUserProfile: hasUserProfile,
+        isLoggedIn: isLoggedIn,
+      ),
+    );
+  } catch (e, stack) {
+    debugPrint('❌ CRITICAL BOOTSTRAP ERROR: $e');
+    debugPrint('Stack: $stack');
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 64),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Error al iniciar Nutrifoto',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    e.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class NutrifotoApp extends StatefulWidget {
@@ -295,21 +328,6 @@ class _NutrifotoAppState extends State<NutrifotoApp> {
             });
           },
         ),
-
-        // Legacy routes (maintain backwards compatibility)
-        AppRoutes.home: (_) => HomeScreen(services: widget.services),
-        AppRoutes.history: (_) => HistoryScreen(services: widget.services),
-        AppRoutes.settings: (_) => SettingsScreen(
-          services: widget.services,
-          isDarkMode: _themeMode == ThemeMode.dark,
-          onThemeChanged: (isDark) {
-            setState(() {
-              _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-            });
-          },
-        ),
-        AppRoutes.statistics: (_) =>
-            StatisticsScreen(services: widget.services),
 
         // Food Entry Flows
         AppRoutes.welcome: (_) => WelcomeScreen(services: widget.services),

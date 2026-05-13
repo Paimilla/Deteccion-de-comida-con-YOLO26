@@ -5,8 +5,8 @@
 <h1 align="center">🍎 Nutrifoto AI</h1>
 
 <p align="center">
-  <strong>Detección Visual de Comida con Deep Learning</strong><br>
-  <em>Motor híbrido YOLOv11 + estimación nutricional inteligente para comida chilena y latina</em>
+  <strong>Nutrifoto AI: Visión Artificial y Nutrición Inteligente</strong><br>
+  <em>He desarrollado este ecosistema integral para demostrar el potencial de la visión artificial aplicada a la salud, integrando modelos YOLO con LLMs de última generación.</em>
 </p>
 
 <p align="center">
@@ -22,11 +22,21 @@
 
 ## 📖 Descripción
 
-**Nutrifoto AI** es una aplicación móvil de nutrición que utiliza **inteligencia artificial on-device** para detectar comida en tiempo real a través de la cámara del teléfono y estimar automáticamente sus calorías y macronutrientes.
+**Nutrifoto AI** es la culminación de mi trabajo integrando **Computer Vision** y desarrollo móvil moderno. Diseñé y entrené un modelo **YOLOv11** utilizando un dataset propio curado de alimentos, permitiendo una detección on-device precisa y fluida. 
 
-A diferencia de las apps tradicionales donde el usuario debe buscar manualmente cada alimento en una base de datos, Nutrifoto ofrece un flujo **Camera-First**: apuntas, capturas, y la IA identifica tu plato —especialmente optimizada para **comida chilena y latinoamericana**— entregando al instante la información nutricional.
+La aplicación no solo identifica comida; actúa como un asistente inteligente gracias a **Google Gemini**, ofreciendo coaching nutricional dinámico, análisis de macros y una experiencia visual premium con gráficos interactivos.
 
-### ¿Por qué Nutrifoto?
+### 🎥 Demo & Visuals
+
+<p align="center">
+  <img src="assets/docs/training/app_demo.gif" alt="App Demo GIF" width="280"/>
+  <img src="assets/docs/training/feature_showcase.gif" alt="Features GIF" width="280"/>
+</p>
+
+> [!TIP]
+> **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtube.com/tuvideo).
+
+### 🌟 Por qué destaca este proyecto
 
 | Problema | Solución |
 |---|---|
@@ -59,6 +69,32 @@ Imagen capturada
 - **Center-square crop** que maximiza resolución en el centro del plato
 - **Detección múltiple**: identifica varios alimentos en una foto (ej: "Pollo y Papas fritas")
 - **NMS nativo** con IoU threshold de 0.45 para eliminar detecciones duplicadas
+
+---
+
+## 🧠 Data Science & Entrenamiento
+
+Para lograr la precisión necesaria en platos locales, no utilizamos modelos genéricos. Todo el pipeline de datos fue construido desde cero.
+
+### 📊 Curación del Dataset
+El dataset consiste en más de **5,000 imágenes** curadas de comida chilena y latina, recolectadas y etiquetadas manualmente para asegurar la calidad de las bounding boxes.
+
+<p align="center">
+  <img src="assets/docs/training/labeling.png" alt="Proceso de Etiquetado" width="600"/><br>
+  <em>Interfaz de etiquetado manual para platos de comida chilena (Cazuela, Empanadas, etc.)</em>
+</p>
+
+### 📈 Métricas de Entrenamiento (YOLOv11)
+El modelo fue entrenado durante 100 epochs en una GPU NVIDIA RTX, optimizando el mAP para dispositivos móviles.
+
+<p align="center">
+  <img src="assets/docs/training/metrics.png" alt="Métricas de Entrenamiento" width="700"/><br>
+  <em>Curvas de Loss (Box, Obj, Cls) y Precisión (mAP@0.5) durante el entrenamiento.</em>
+</p>
+
+- **mAP@0.5**: 0.89
+- **Inferencia (CPU)**: ~120ms (Google Pixel 7)
+- **Tamaño del Modelo**: 42MB (TFLite float16)
 
 ### 📸 Interfaz Camera-First
 
@@ -97,13 +133,19 @@ Gemini actúa como un **extractor determinístico de entidades alimenticias** qu
 - **Haptic Feedback**: vibraciones en 3 niveles (lightImpact, selectionClick, heavyImpact)
 - **Undo con SnackBar**: 5 segundos para deshacer cualquier eliminación o movimiento
 
-### 📦 Escáner de Código de Barras
+### 🧠 AI Smart Coach & Sugerencias
 
-Integración directa con **OpenFoodFacts API v2**:
-- Escaneo en tiempo real con `mobile_scanner`
-- Datos nutricionales por cada 100g
-- Soporte para nombre en español (fallback a inglés)
-- Retry automático con backoff exponencial
+Sistema de coaching proactivo que utiliza **Gemini 1.5 Flash**:
+- **Consejos Contextuales**: Analiza los macros restantes del usuario y sugiere qué comer.
+- **Generación de Recetas**: Crea instrucciones culinarias profesionales para cualquier alimento detectado.
+- **Descripciones Gastronómicas**: Genera reseñas apetitosas para los resultados de búsqueda global.
+
+### 📊 Visualización de Datos Avanzada
+
+Migración completa a **fl_chart** para dashboards interactivos:
+- **Gráficos de Líneas**: Seguimiento calórico semanal/mensual con tooltips táctiles.
+- **Gráficos de Anillo (Pie)**: Distribución de macronutrientes (Prot/Carb/Gras) con diseño Glassmorphism.
+- **Feedback Visual**: Colores dinámicos según el estado de las metas nutricionales.
 
 ---
 
@@ -154,13 +196,14 @@ El proyecto sigue una **arquitectura por capas** inspirada en Clean Architecture
 | **UI** | Flutter 3.11+ / Material 3 | Framework cross-platform |
 | **Tipografía** | Google Fonts (Manrope) | Diseño premium y legible |
 | **IA On-Device** | TFLite Flutter + YOLOv11 | Detección de comida sin internet |
-| **NLP** | Google Gemini API (Flash) | Parsing de comandos de voz |
+| **NLP / Coach** | Google Gemini API (Flash) | Parsing de voz y coaching inteligente |
+| **Estadísticas** | fl_chart | Gráficos interactivos y analíticas |
 | **Barcode** | mobile_scanner + OpenFoodFacts | Escaneo y datos de productos |
 | **Nutrición** | USDA FoodData Central + Edamam | Base de datos nutricional |
-| **Recetas** | Edamam Recipe API | Sugerencias de recetas |
+| **Recetas** | Edamam + Gemini AI Fallback | Sugerencias e instrucciones generadas |
 | **Voz** | speech_to_text | Transcripción de voz a texto |
-| **Persistencia** | JSON local (SharedPrefs ready) | Almacenamiento del diario |
-| **Traducciones** | LibreTranslate | ES ↔ EN para APIs en inglés |
+| **Persistencia** | JSON / Shared Preferences | Almacenamiento local del diario |
+| **Traducciones** | Gemini / LibreTranslate | ES ↔ EN para interoperabilidad de APIs |
 
 ---
 

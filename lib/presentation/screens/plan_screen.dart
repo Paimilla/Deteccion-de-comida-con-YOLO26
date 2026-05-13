@@ -451,6 +451,7 @@ class _PlanScreenState extends State<PlanScreen>
                               if (mounted) {
                                 await _loadSelectedDay();
                                 if (mounted) {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Row(
@@ -508,6 +509,7 @@ class _PlanScreenState extends State<PlanScreen>
     await _loadSelectedDay();
 
     if (original != null && mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -556,6 +558,7 @@ class _PlanScreenState extends State<PlanScreen>
     await _loadSelectedDay();
 
     if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

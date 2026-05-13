@@ -517,11 +517,12 @@ class _PickerSheetState extends State<_PickerSheet> {
 class _IntroPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 60),
           Container(
             width: 180, height: 180,
             decoration: BoxDecoration(shape: BoxShape.circle, color: _accent.withValues(alpha: 0.06)),
@@ -539,6 +540,7 @@ class _IntroPage extends StatelessWidget {
           const Text('Perfecto! Primero\ndescubramos cuantas\ncalorias necesitas al dia',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, height: 1.3)),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -680,7 +682,7 @@ class _StrengthTrainingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(children: [
         const SizedBox(height: 20),
@@ -689,7 +691,7 @@ class _StrengthTrainingPage extends StatelessWidget {
         const Text('Realizas entrenamientos\nde fuerza?', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text('Esta informacion es clave para\ndeterminar tu ingesta de proteina', textAlign: TextAlign.center, style: TextStyle(color: _bodyText, fontSize: 14)),
-        const Spacer(),
+        const SizedBox(height: 40),
         _SelectionCard(emoji: '\u2705', title: 'Si', selected: selected == 'Si', onTap: () => onChanged('Si')),
         const SizedBox(height: 10),
         _SelectionCard(emoji: '\u274C', title: 'No', selected: selected == 'No', onTap: () => onChanged('No')),
@@ -792,9 +794,10 @@ class _NamePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const SizedBox(height: 60),
         _PageIcon(icon: Icons.edit),
         const SizedBox(height: 24),
         const Text('Como te llamas?', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
@@ -810,6 +813,7 @@ class _NamePage extends StatelessWidget {
             decoration: InputDecoration(border: InputBorder.none, hintText: 'Escribe tu nombre', hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25)), contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18)),
           ),
         ),
+        const SizedBox(height: 40),
       ]),
     );
   }

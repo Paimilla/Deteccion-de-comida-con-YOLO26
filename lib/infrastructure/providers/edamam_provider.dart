@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../domain/models/nutrition_models.dart';
@@ -38,8 +39,7 @@ class EdamamProvider implements FoodSearchProvider {
   @override
   Future<List<FoodItem>> searchFood(String query) async {
     if (_appId.isEmpty || _appKey.isEmpty) {
-      // ignore: avoid_print
-      print('⚠️ EdamamProvider: API keys vacías, retornando lista vacía');
+      debugPrint('⚠️ EdamamProvider: API keys vacías, retornando lista vacía');
       return const [];
     }
 
@@ -58,8 +58,7 @@ class EdamamProvider implements FoodSearchProvider {
       );
 
       if (response.statusCode != 200) {
-        // ignore: avoid_print
-        print('❌ Edamam error ${response.statusCode}: ${response.body.substring(0, 200)}');
+        debugPrint('❌ Edamam error ${response.statusCode}: ${response.body.substring(0, 200)}');
         return const [];
       }
 
@@ -85,7 +84,7 @@ class EdamamProvider implements FoodSearchProvider {
         final image = food['image']?.toString();
 
         results.add(FoodItem(
-          source: FoodSource.unknown, // Se podría agregar FoodSource.edamam
+          source: FoodSource.edamam,
           itemId: foodId,
           nameEs: label, // Edamam retorna en inglés por defecto
           nameEn: label,
@@ -105,12 +104,10 @@ class EdamamProvider implements FoodSearchProvider {
         ));
       }
 
-      // ignore: avoid_print
-      print('✅ Edamam: ${results.length} resultado(s) para "$query"');
+      debugPrint('✅ Edamam: ${results.length} resultado(s) para "$query"');
       return results;
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error en EdamamProvider: $e');
+      debugPrint('❌ Error en EdamamProvider: $e');
       return const [];
     }
   }

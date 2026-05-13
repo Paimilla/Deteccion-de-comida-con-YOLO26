@@ -40,6 +40,7 @@ class RegistrationTracker {
     final payload = {
       'timestamp': DateTime.now().toIso8601String(),
       'name': name,
+      'displayName': name,
       'email': email,
       'provider': provider,
       'source': source ?? 'directo',
@@ -47,6 +48,8 @@ class RegistrationTracker {
       'platform': defaultTargetPlatform.name,
       'appVersion': '1.0.0',
     };
+
+    debugPrint('📊 RegistrationTracker Payload: ${jsonEncode(payload)}');
 
     debugPrint('📊 RegistrationTracker: Nuevo registro — $name ($provider)');
 
@@ -96,9 +99,10 @@ class RegistrationTracker {
     required String name,
     required String source,
   }) async {
+    final uniqueId = DateTime.now().millisecondsSinceEpoch % 10000;
     return trackRegistration(
       name: name,
-      email: 'guest@nutrifoto.app',
+      email: 'guest_$uniqueId@nutrifoto.app',
       provider: 'guest',
       source: source,
     );

@@ -99,6 +99,11 @@ class TrackingUseCases {
     await repository.saveEntry(deletedEntry);
   }
 
+  /// Actualiza una entrada existente.
+  Future<void> updateFoodEntry(DiaryEntry entry) async {
+    await repository.saveEntry(entry);
+  }
+
   /// Copia un alimento a otro día y opcionalmente a otro MealSlot.
   Future<void> copyFoodToDay({
     required FoodItem food,

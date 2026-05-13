@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
+import '../../domain/models/nutrition_models.dart';
+import '../../domain/models/tracking_models.dart';
 import '../widgets/nutrifoto_ui.dart';
 
 /// Pantalla de bienvenida con opciones de autenticación:
@@ -151,26 +153,74 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         onSubmit: (name, source) async {
           Navigator.pop(ctx);
 
+          // Mostrar overlay de carga premium
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Center(
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: NutrifotoColors.primary),
+                    SizedBox(height: 16),
+                    Text(
+                      'Preparando tu perfil...',
+                      style: TextStyle(color: Colors.white, fontSize: 16, decoration: TextDecoration.none),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
           // Crear sesión de invitado
-          final user = await widget.services.authService.signInAsGuest(
+          await widget.services.authService.signInAsGuest(
             name: name,
             source: source,
           );
 
-          // Track visita de invitado
-          widget.services.registrationTracker.trackGuestVisit(
+          // Track visita de invitado en Google Sheets (webhook)
+          await widget.services.registrationTracker.trackGuestVisit(
             name: name,
             source: source,
           );
 
           if (!mounted) return;
 
-          // Ir al onboarding con nombre pre-llenado
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.onboarding,
-            arguments: {'prefillName': user.displayName},
-          );
+          // Inicializar perfil predeterminado
+          final hasProfile = await widget.services.trackingUseCases.hasUserProfile();
+          if (!hasProfile) {
+            await widget.services.trackingUseCases.setNutritionGoals(const NutritionGoals(
+              kcal: 2200,
+              proteinG: 140,
+              carbsG: 260,
+              fatG: 65,
+            ));
+
+            await widget.services.trackingUseCases.saveUserProfile(UserProfile(
+              name: name,
+              gender: 'Hombre',
+              weightKg: 75,
+              heightCm: 175,
+              age: 28,
+              exercisePerWeek: 3,
+              createdAt: DateTime.now(),
+            ));
+          }
+
+          if (!mounted) return;
+
+          // Quitar el loading
+          Navigator.pop(context);
+
+          // Ir directamente al Main
+          Navigator.pushReplacementNamed(context, AppRoutes.hoy);
         },
       ),
     );
@@ -609,7 +659,7 @@ class _GuestModeSheetState extends State<_GuestModeSheet> {
           color: Colors.white.withValues(alpha: 0.08),
         ),
       ),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
 import '../../domain/models/tracking_models.dart';
 import '../widgets/animated_screen_body.dart';
 import '../widgets/app_bottom_nav.dart';
+
+import '../widgets/nutrifoto_ui.dart';
 
 class StatisticsScreen extends StatefulWidget {
   final AppServices services;
@@ -104,7 +107,26 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   ),
                 ),
                 if (_loading)
-                  const Center(child: CircularProgressIndicator())
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const SkeletonBox(height: 50, borderRadius: 18),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Expanded(child: SkeletonBox(height: 120, borderRadius: 18)),
+                            const SizedBox(width: 12),
+                            const Expanded(child: SkeletonBox(height: 120, borderRadius: 18)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        const SkeletonBox(height: 240, borderRadius: 22),
+                        const SizedBox(height: 14),
+                        const SkeletonBox(height: 180, borderRadius: 22),
+                      ],
+                    ),
+                  )
                 else if (_loadError != null)
                   Center(
                     child: Text(
@@ -369,32 +391,137 @@ class _ChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Prepare data points for fl_chart
+    final spots = data.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), e.value.kcalTotal);
+    }).toList();
+
+    if (spots.isEmpty) {
+      spots.add(const FlSpot(0, 0));
+    }
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFF172742),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Calorias por Dia',
+            'Calorías Diarias',
             style: TextStyle(
               color: Colors.white,
-              fontSize: compact ? 22 : 27,
+              fontSize: compact ? 20 : 24,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           SizedBox(
-            height: compact ? 180 : 210,
-            child: CustomPaint(
-              painter: _KcalLineChartPainter(
-                values: data.map((d) => d.kcalTotal).toList(),
-                monthMode: monthMode,
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    strokeWidth: 1,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= data.length) return const SizedBox();
+                        
+                        final labels = monthMode
+                            ? const ['S1', 'S2', 'S3', 'S4']
+                            : const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+                        
+                        final labelIndex = monthMode ? (index / 7).floor() : index;
+                        if (labelIndex >= labels.length) return const SizedBox();
+
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            labels[labelIndex],
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${value.toInt()}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            fontSize: 10,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: (data.length - 1).toDouble(),
+                minY: 0,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8A5CF6), Color(0xFFC084FC)],
+                    ),
+                    barWidth: 4,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF8A5CF6).withValues(alpha: 0.3),
+                          const Color(0xFF8A5CF6).withValues(alpha: 0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (spot) => const Color(0xFF1F2937),
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((s) {
+                        return LineTooltipItem(
+                          '${s.y.round()} kcal',
+                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
               ),
-              child: const SizedBox.expand(),
             ),
           ),
         ],
@@ -403,129 +530,7 @@ class _ChartCard extends StatelessWidget {
   }
 }
 
-class _KcalLineChartPainter extends CustomPainter {
-  _KcalLineChartPainter({required this.values, required this.monthMode});
-
-  final List<double> values;
-  final bool monthMode;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.06)
-      ..strokeWidth = 1;
-
-    for (var i = 0; i <= 4; i++) {
-      final y = size.height * (i / 4);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    if (values.isEmpty) {
-      return;
-    }
-
-    final maxValue = values.reduce(math.max);
-    final top = maxValue <= 0 ? 100 : maxValue * 1.15;
-
-    final points = <Offset>[];
-    for (var i = 0; i < values.length; i++) {
-      final dx = values.length == 1
-          ? 0.0
-          : size.width * (i / (values.length - 1));
-      final dy = size.height - (values[i] / top) * size.height;
-      points.add(Offset(dx, dy.clamp(0, size.height)));
-    }
-
-    final areaPath = Path()..moveTo(points.first.dx, size.height);
-    for (final point in points) {
-      areaPath.lineTo(point.dx, point.dy);
-    }
-    areaPath.lineTo(points.last.dx, size.height);
-    areaPath.close();
-
-    final fill = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0x558C63FF), Color(0x008C63FF)],
-      ).createShader(Offset.zero & size);
-    canvas.drawPath(areaPath, fill);
-
-    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
-    for (var i = 1; i < points.length; i++) {
-      final prev = points[i - 1];
-      final current = points[i];
-      final midX = (prev.dx + current.dx) / 2;
-      linePath.cubicTo(midX, prev.dy, midX, current.dy, current.dx, current.dy);
-    }
-
-    final linePaint = Paint()
-      ..color = const Color(0xFF8D63FF)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(linePath, linePaint);
-
-    final glowPaint = Paint()
-      ..color = const Color(0xFF8D63FF).withValues(alpha: 0.33)
-      ..style = PaintingStyle.fill;
-    final dotPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    for (final point in points) {
-      canvas.drawCircle(point, 8, glowPaint);
-      canvas.drawCircle(point, 4, dotPaint);
-    }
-
-    final labels = monthMode
-        ? const ['S1', 'S2', 'S3', 'S4']
-        : const ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
-
-    final textStyle = TextStyle(
-      color: Colors.white.withValues(alpha: 0.52),
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-    );
-
-    if (monthMode) {
-      for (var i = 0; i < labels.length; i++) {
-        final x = size.width * (i / (labels.length - 1));
-        _drawLabel(canvas, labels[i], textStyle, x, size.height - 2);
-      }
-    } else {
-      for (var i = 0; i < labels.length && i < points.length; i++) {
-        _drawLabel(canvas, labels[i], textStyle, points[i].dx, size.height - 2);
-      }
-    }
-  }
-
-  void _drawLabel(
-    Canvas canvas,
-    String text,
-    TextStyle style,
-    double x,
-    double y,
-  ) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
-
-    painter.paint(
-      canvas,
-      Offset(
-        (x - painter.width / 2).clamp(0, double.infinity),
-        y - painter.height,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _KcalLineChartPainter oldDelegate) {
-    return oldDelegate.values != values || oldDelegate.monthMode != monthMode;
-  }
-}
+// Removiendo pintores antiguos...
 
 class _MacroCard extends StatelessWidget {
   const _MacroCard({required this.macro, this.compact = false});
@@ -536,83 +541,64 @@ class _MacroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFF172742),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Distribucion de Macros',
+            'Distribución de Macros',
             style: TextStyle(
               color: Colors.white,
-              fontSize: compact ? 22 : 27,
+              fontSize: compact ? 20 : 24,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = compact || constraints.maxWidth < 370;
-              final donutSize = narrow ? 120.0 : 144.0;
-              final legends = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _MacroLegend(
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 4,
+                centerSpaceRadius: 50,
+                sections: [
+                  PieChartSectionData(
+                    value: macro.proteinGrams,
+                    title: '${(macro.proteinPct * 100).round()}%',
                     color: const Color(0xFF71B7FF),
-                    label: 'Proteina',
-                    value:
-                        '${(macro.proteinPct * 100).round()}%  ${macro.proteinGrams.toStringAsFixed(1)} g',
+                    radius: 20,
+                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  const SizedBox(height: 10),
-                  _MacroLegend(
+                  PieChartSectionData(
+                    value: macro.carbsGrams,
+                    title: '${(macro.carbsPct * 100).round()}%',
                     color: const Color(0xFFF9C533),
-                    label: 'Carbs',
-                    value:
-                        '${(macro.carbsPct * 100).round()}%  ${macro.carbsGrams.toStringAsFixed(1)} g',
+                    radius: 20,
+                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  const SizedBox(height: 10),
-                  _MacroLegend(
+                  PieChartSectionData(
+                    value: macro.fatGrams,
+                    title: '${(macro.fatPct * 100).round()}%',
                     color: const Color(0xFF8F63FF),
-                    label: 'Grasa',
-                    value:
-                        '${(macro.fatPct * 100).round()}%  ${macro.fatGrams.toStringAsFixed(1)} g',
+                    radius: 20,
+                    titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ],
-              );
-
-              if (narrow) {
-                return Column(
-                  children: [
-                    SizedBox(
-                      width: donutSize,
-                      height: donutSize,
-                      child: CustomPaint(
-                        painter: _MacroDonutPainter(macro: macro),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    legends,
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  SizedBox(
-                    width: donutSize,
-                    height: donutSize,
-                    child: CustomPaint(
-                      painter: _MacroDonutPainter(macro: macro),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: legends),
-                ],
-              );
-            },
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _MacroLegend(color: const Color(0xFF71B7FF), label: 'Prot', value: '${macro.proteinGrams.round()}g'),
+              _MacroLegend(color: const Color(0xFFF9C533), label: 'Carb', value: '${macro.carbsGrams.round()}g'),
+              _MacroLegend(color: const Color(0xFF8F63FF), label: 'Grasa', value: '${macro.fatGrams.round()}g'),
+            ],
           ),
         ],
       ),
@@ -621,118 +607,21 @@ class _MacroCard extends StatelessWidget {
 }
 
 class _MacroLegend extends StatelessWidget {
-  const _MacroLegend({
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-
+  const _MacroLegend({required this.color, required this.label, required this.value});
   final Color color;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Container(
-          width: 11,
-          height: 11,
-          margin: const EdgeInsets.only(top: 4),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
       ],
     );
-  }
-}
-
-class _MacroDonutPainter extends CustomPainter {
-  _MacroDonutPainter({required this.macro});
-
-  final _MacroBreakdown macro;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.shortestSide / 2 - 2;
-    const stroke = 24.0;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-
-    final rawValues = [
-      macro.proteinPct,
-      macro.carbsPct,
-      macro.fatPct,
-    ].map((v) => v.isFinite ? v.clamp(0.0, 1.0) : 0.0).toList();
-    final total = rawValues.fold<double>(0, (sum, v) => sum + v);
-    const colors = [Color(0xFF71B7FF), Color(0xFFF9C533), Color(0xFF8F63FF)];
-
-    final trackPaint = Paint()
-      ..color = const Color(0xFF2A3A57)
-      ..strokeWidth = stroke
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, trackPaint);
-
-    if (total <= 0.0001) {
-      return;
-    }
-
-    const gapAngle = 0.05;
-    const start = -math.pi / 2;
-    var current = start;
-
-    final normalized = rawValues.map((v) => v / total).toList();
-    final nonZeroCount = normalized.where((v) => v > 0).length;
-    final totalGap = gapAngle * nonZeroCount;
-    final drawable = (2 * math.pi - totalGap).clamp(0.0, 2 * math.pi);
-
-    for (var i = 0; i < normalized.length; i++) {
-      final ratio = normalized[i];
-      if (ratio <= 0) continue;
-
-      final sweep = drawable * ratio;
-      final paint = Paint()
-        ..color = colors[i]
-        ..strokeWidth = stroke
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.butt;
-
-      canvas.drawArc(rect, current, sweep, false, paint);
-      current += sweep + gapAngle;
-    }
-
-    final hole = Paint()..color = const Color(0xFF121F39);
-    canvas.drawCircle(center, radius - (stroke / 2 + 4), hole);
-  }
-
-  @override
-  bool shouldRepaint(covariant _MacroDonutPainter oldDelegate) {
-    return oldDelegate.macro != macro;
   }
 }
 

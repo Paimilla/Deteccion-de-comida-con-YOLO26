@@ -4,7 +4,7 @@ import '../infrastructure/services/api_config.dart';
 import 'food_orchestrator.dart';
 import 'orchestrator_factory.dart';
 
-class BootstrapExample {
+class OrchestratorBuilder {
   static Future<FoodOrchestrator> build({
     required ApiConfig config,
     required String chileDatasetJson,

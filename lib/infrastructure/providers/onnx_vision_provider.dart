@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -30,8 +31,7 @@ class OnnxVisionProvider implements VisionProvider {
     if (_isInitialized) return;
 
     try {
-      // ignore: avoid_print
-      print('🔄 Iniciando provider TFLite...');
+      debugPrint('🔄 Iniciando provider TFLite...');
 
       // Cargar etiquetas
       final labelsData = await rootBundle.loadString(_labelsPath);
@@ -41,26 +41,22 @@ class OnnxVisionProvider implements VisionProvider {
           .where((line) => line.isNotEmpty)
           .toList();
 
-      // ignore: avoid_print
-      print('📋 Etiquetas cargadas: ${_labels?.length} clases');
+      debugPrint('📋 Etiquetas cargadas: ${_labels?.length} clases');
 
       // Intentar cargar modelo TFLite
       try {
         await _initializeTflite();
         _useTflite = true;
-        // ignore: avoid_print
-        print('✅ Modo TFLite activado (YOLOv11)');
+        debugPrint('✅ Modo TFLite activado (YOLOv11)');
       } catch (e) {
-        // ignore: avoid_print
-        print('⚠️ TFLite falló, usando análisis de colores: $e');
+        debugPrint('⚠️ TFLite falló, usando análisis de colores: $e');
         _tfliteError = e.toString();
         _useTflite = false;
       }
 
       _isInitialized = true;
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('❌ Error inicializando provider: $e');
+      debugPrint('❌ Error inicializando provider: $e');
       _useTflite = false;
       _isInitialized = true;
       _tfliteError = e.toString();
@@ -83,15 +79,12 @@ class OnnxVisionProvider implements VisionProvider {
     final inputTensors = _interpreter!.getInputTensors();
     final outputTensors = _interpreter!.getOutputTensors();
 
-    // ignore: avoid_print
-    print('📊 Input tensors: ${inputTensors.map((t) => '${t.name}: ${t.shape} ${t.type}').join(', ')}');
-    // ignore: avoid_print
-    print('📊 Output tensors: ${outputTensors.map((t) => '${t.name}: ${t.shape} ${t.type}').join(', ')}');
+    debugPrint('📊 Input tensors: ${inputTensors.map((t) => '${t.name}: ${t.shape} ${t.type}').join(', ')}');
+    debugPrint('📊 Output tensors: ${outputTensors.map((t) => '${t.name}: ${t.shape} ${t.type}').join(', ')}');
 
     // Allocate tensors
     _interpreter!.allocateTensors();
-    // ignore: avoid_print
-    print('✅ TFLite interpreter ready');
+    debugPrint('✅ TFLite interpreter ready');
   }
 
   /// Libera recursos
@@ -117,8 +110,7 @@ class OnnxVisionProvider implements VisionProvider {
   /// Clasificación usando TFLite (YOLOv11)
   Future<FoodItem?> _classifyWithTflite(String imagePath) async {
     try {
-      // ignore: avoid_print
-      print('🤖 Analizando con TFLite: $imagePath');
+      debugPrint('🤖 Analizando con TFLite: $imagePath');
 
       // 1. Cargar imagen
       final imageBytes = await File(imagePath).readAsBytes();
@@ -133,8 +125,7 @@ class OnnxVisionProvider implements VisionProvider {
       // YOLOv11 output: [1, 34, 8400] for 30 classes (4 bbox + 30 classes)
       final outputTensor = _interpreter!.getOutputTensor(0);
       final outShape = outputTensor.shape;
-      // ignore: avoid_print
-      print('📊 Output shape: $outShape type: ${outputTensor.type}');
+      debugPrint('📊 Output shape: $outShape type: ${outputTensor.type}');
 
       // Create output based on shape
       final output = _createOutputBuffer(outShape);
@@ -146,8 +137,7 @@ class OnnxVisionProvider implements VisionProvider {
       final detections = _parseOutput(output, outShape);
 
       if (detections == null || detections.isEmpty) {
-        // ignore: avoid_print
-        print('⚠️ No se detectó comida con confianza > $_confidenceThreshold');
+        debugPrint('⚠️ No se detectó comida con confianza > $_confidenceThreshold');
         // Fallback to color analysis
         return _classifyWithColorAnalysis(imagePath);
       }
@@ -157,15 +147,12 @@ class OnnxVisionProvider implements VisionProvider {
       final combinedName = classNames.join(' y ');
       final avgConf = detections.map((d) => d['confidence'] as double).reduce((a, b) => a + b) / detections.length;
       
-      // ignore: avoid_print
-      print('✅ TFLite detectó: $combinedName (confianza media ${(avgConf * 100).toStringAsFixed(1)}%)');
+      debugPrint('✅ TFLite detectó: $combinedName (confianza media ${(avgConf * 100).toStringAsFixed(1)}%)');
 
       return _createCombinedFoodItem(detections, combinedName, avgConf, imagePath);
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('❌ Error en TFLite: $e');
-      // ignore: avoid_print
-      print('Stack: $stack');
+      debugPrint('❌ Error en TFLite: $e');
+      debugPrint('Stack: $stack');
       return _classifyWithColorAnalysis(imagePath);
     }
   }
@@ -302,8 +289,7 @@ class OnnxVisionProvider implements VisionProvider {
 
       return nmsDetections;
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error parsing output: $e');
+      debugPrint('❌ Error parsing output: $e');
       return null;
     }
   }
@@ -349,8 +335,7 @@ class OnnxVisionProvider implements VisionProvider {
     img.Image resized = img.copyResize(cropped,
         width: targetSize, height: targetSize, interpolation: img.Interpolation.linear);
 
-    // ignore: avoid_print
-    print('📐 CenterCrop: ${src.width}x${src.height} -> [Square] -> ${targetSize}x$targetSize');
+    debugPrint('📐 CenterCrop: ${src.width}x${src.height} -> [Square] -> ${targetSize}x$targetSize');
     return resized;
   }
 
@@ -361,8 +346,7 @@ class OnnxVisionProvider implements VisionProvider {
     final inputTensor = _interpreter!.getInputTensor(0);
     final inputShape = inputTensor.shape;
 
-    // ignore: avoid_print
-    print('📊 Input shape expected: $inputShape');
+    debugPrint('📊 Input shape expected: $inputShape');
 
     final h = image.height;
     final w = image.width;
@@ -372,13 +356,11 @@ class OnnxVisionProvider implements VisionProvider {
     // NHWC: [1, 640, 640, 3]
     if (inputShape.length == 4 && inputShape[1] == 3) {
       // NCHW format
-      // ignore: avoid_print
-      print('📐 Using NCHW format');
+      debugPrint('📐 Using NCHW format');
       return _preprocessNCHW(image, h, w);
     } else {
       // NHWC format (default for TFLite)
-      // ignore: avoid_print
-      print('📐 Using NHWC format');
+      debugPrint('📐 Using NHWC format');
       return _preprocessNHWC(image, h, w);
     }
   }
@@ -528,22 +510,19 @@ class OnnxVisionProvider implements VisionProvider {
 
   Future<FoodItem?> _classifyWithColorAnalysis(String imagePath) async {
     try {
-      // ignore: avoid_print
-      print('📷 Fallback: analizando por colores: $imagePath');
+      debugPrint('📷 Fallback: analizando por colores: $imagePath');
 
       final imageBytes = await File(imagePath).readAsBytes();
       final image = img.decodeImage(imageBytes);
       if (image == null) return null;
 
       final colorProfile = _analyzeColors(image);
-      // ignore: avoid_print
-      print('🎨 Perfil: $colorProfile');
+      debugPrint('🎨 Perfil: $colorProfile');
 
       final detection = _matchFoodByColor(colorProfile);
       if (detection == null) return null;
 
-      // ignore: avoid_print
-      print(
+      debugPrint(
           '✅ Color match: ${detection.name} (${(detection.confidence * 100).toStringAsFixed(1)}%)');
 
       return FoodItem(
@@ -561,12 +540,11 @@ class OnnxVisionProvider implements VisionProvider {
         imageUrl: imagePath,
         metadata: {
           'method': 'color_analysis',
-          'note': 'TFLite no disponible - análisis de colores | Error: $_tfliteError',
+          'note': 'TFLite no disponible - análisis de colores',
         },
       );
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error en análisis de colores: $e');
+      debugPrint('❌ Error en análisis de colores: $e');
       return null;
     }
   }
@@ -688,17 +666,13 @@ class OnnxVisionProvider implements VisionProvider {
         .take(3)
         .map((e) => '${e.key}:${(e.value * 100).toStringAsFixed(1)}%')
         .join(', ');
-    // ignore: avoid_print
-    print('🏆 Top-3 color matches: $top3');
+      debugPrint('🏆 Top-3 color matches: $top3');
 
     if (bestMatch != null && bestScore > 0.15) {
       final random = math.Random();
       final variation = 0.9 + random.nextDouble() * 0.2;
       
       String debugName = bestMatch.name;
-      if (_tfliteError.isNotEmpty) {
-        debugName = "ERROR: ${_tfliteError.split('\n')[0]}";
-      }
 
       return _FoodDetection(
         name: debugName,
@@ -712,9 +686,6 @@ class OnnxVisionProvider implements VisionProvider {
     }
 
     String defaultName = 'Plato mixto';
-    if (_tfliteError.isNotEmpty) {
-      defaultName = "ERROR: ${_tfliteError.split('\n')[0]}";
-    }
 
     return _FoodDetection(
       name: defaultName,

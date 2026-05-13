@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
-import '../../domain/models/tracking_models.dart';
 import '../widgets/animated_screen_body.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/nutrifoto_ui.dart';
@@ -27,6 +26,7 @@ class _AssistantScreenState extends State<AssistantScreen>
   late final AnimationController _ambientController;
   bool _hasInput = false;
   int _selectedTopic = 0;
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -62,29 +62,65 @@ class _AssistantScreenState extends State<AssistantScreen>
 
   Future<void> _send() async {
     final input = _inputCtrl.text.trim();
-    if (input.isEmpty) {
+    if (input.isEmpty || _isTyping) {
       return;
     }
 
     setState(() {
       _messages.add(_ChatMessage(role: _Role.user, text: input));
       _inputCtrl.clear();
+      _isTyping = true;
     });
     _scrollToBottom();
 
-    final summary = await widget.services.trackingUseCases.getDailySummary(
-      DateTime.now(),
-    );
+    try {
+      final now = DateTime.now();
+      final summary = await widget.services.trackingUseCases.getDailySummary(now);
+      
+      final contextStr = '''
+      FECHA: ${now.day}/${now.month}/${now.year}
+      METAS: ${summary.goals.kcal} kcal, P:${summary.goals.proteinG}g, C:${summary.goals.carbsG}g, G:${summary.goals.fatG}g
+      HOY LLEVA: ${summary.kcalTotal.toStringAsFixed(0)} kcal
+      MACROS ACTUALES: P:${summary.proteinTotal.toStringAsFixed(1)}g, C:${summary.carbsTotal.toStringAsFixed(1)}g, G:${summary.fatTotal.toStringAsFixed(1)}g
+      AGUA: ${summary.hydrationMl} ml
+      COMIDAS: ${summary.entries.map((e) => "${e.food.nameEs} (${e.food.nutrition.kcal.toStringAsFixed(0)} kcal)").join(', ')}
+      ''';
 
-    final answer = _buildAnswer(input, summary);
-    if (!mounted) {
-      return;
+      final history = _messages
+          .where((m) => m.text.isNotEmpty)
+          .map((m) => {
+                'role': m.role == _Role.user ? 'user' : 'model',
+                'text': m.text,
+              })
+          .toList();
+
+      final answer = await widget.services.geminiNlpService.generateChatResponse(
+        userMessage: input,
+        appContext: contextStr,
+        history: history,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isTyping = false;
+        _messages.add(_ChatMessage(
+          role: _Role.assistant,
+          text: answer ?? 'No pude conectar con el servidor de IA. Revisa tu conexión.',
+        ));
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isTyping = false;
+        _messages.add(const _ChatMessage(
+          role: _Role.assistant,
+          text: 'Lo siento, ocurrió un error al procesar tu mensaje.',
+        ));
+      });
+      _scrollToBottom();
     }
-
-    setState(() {
-      _messages.add(_ChatMessage(role: _Role.assistant, text: answer));
-    });
-    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -100,27 +136,6 @@ class _AssistantScreenState extends State<AssistantScreen>
     });
   }
 
-  String _buildAnswer(String input, DailySummary summary) {
-    final lower = input.toLowerCase();
-    final kcal = summary.kcalTotal;
-    final goal = summary.goals.kcal;
-    final water = summary.hydrationMl;
-
-    if (lower.contains('hoy') || lower.contains('progreso')) {
-      final pct = goal <= 0 ? 0 : ((kcal / goal) * 100).clamp(0, 999);
-      return 'Hoy llevas ${kcal.toStringAsFixed(0)} kcal de ${goal.toStringAsFixed(0)} kcal (${pct.toStringAsFixed(0)}%). Hidratacion: $water ml.';
-    }
-
-    if (lower.contains('agua') || lower.contains('hidrat')) {
-      return 'Tu hidratacion actual es de $water ml. Si quieres, agrega 250 ml desde el modulo Hidratacion.';
-    }
-
-    if (lower.contains('macro') || lower.contains('prote')) {
-      return 'Macros de hoy: P ${summary.proteinTotal.toStringAsFixed(1)} g, C ${summary.carbsTotal.toStringAsFixed(1)} g, G ${summary.fatTotal.toStringAsFixed(1)} g.';
-    }
-
-    return 'Puedo ayudarte con progreso diario, hidratacion y macros. Prueba: "como voy hoy".';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -250,9 +265,12 @@ class _AssistantScreenState extends State<AssistantScreen>
                   child: ListView.separated(
                     controller: _scrollCtrl,
                     padding: EdgeInsets.fromLTRB(12, 2, 12, compact ? 10 : 14),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_isTyping ? 1 : 0),
                     separatorBuilder: (_, index) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return const _TypingIndicator();
+                      }
                       final msg = _messages[index];
                       final isUser = msg.role == _Role.user;
 
@@ -581,5 +599,81 @@ class _AssistantWavePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _AssistantWavePainter oldDelegate) {
     return oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+  }
+}
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? NutrifotoColors.surface : Colors.grey[100],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) => _Dot(index: i)),
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatefulWidget {
+  final int index;
+  const _Dot({required this.index});
+
+  @override
+  State<_Dot> createState() => _DotState();
+}
+
+class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    Future.delayed(Duration(milliseconds: widget.index * 150), () {
+      if (mounted) _controller.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 5,
+          height: 5,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: NutrifotoColors.primary.withValues(alpha: 0.3 + (_controller.value * 0.7)),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
   }
 }

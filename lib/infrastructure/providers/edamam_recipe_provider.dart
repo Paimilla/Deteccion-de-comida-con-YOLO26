@@ -85,7 +85,7 @@ class EdamamRecipeProvider implements RecipeProvider {
         final category = food['category']?.toString() ?? '';
 
         results.add(FoodItem(
-          source: FoodSource.spoonacular,
+          source: FoodSource.edamam,
           itemId: foodId,
           nameEs: label,
           nameEn: label,

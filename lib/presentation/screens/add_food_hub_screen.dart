@@ -40,6 +40,13 @@ class AddFoodHubScreen extends StatelessWidget {
         gradientIndex: 3,
       ),
       const _HubAction(
+        title: 'Recetas sugeridas',
+        subtitle: 'Busca platos preparados e ideas',
+        icon: Icons.menu_book_rounded,
+        route: AppRoutes.recipes,
+        gradientIndex: 5,
+      ),
+      const _HubAction(
         title: 'Registro por voz',
         subtitle: 'Habla o pega texto transcrito',
         icon: Icons.mic,

@@ -182,9 +182,9 @@ class SkeletonListItem extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: List.generate(
-                      4,
+                      3,
                       (i) => Container(
-                        width: 48,
+                        width: 32,
                         height: 10,
                         margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
