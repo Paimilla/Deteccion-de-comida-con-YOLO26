@@ -90,29 +90,32 @@ El pipeline de datos se gestionó íntegramente con **Roboflow**, permitiendo un
 
 <p align="center">
   <img src="assets/docs/training/roboflow_labeling.png" alt="Etiquetado en Roboflow" width="600"/><br>
-  <em>Interfaz de etiquetado manual para platos de comida chilena.</em>
+  <em>Interfaz de etiquetado manual y estadísticas de distribución de clases en Roboflow.</em>
 </p>
 
 - **Aumentación de Datos**: Se aplicaron técnicas de rotación, cambios de brillo, ruido y mosaico para fortalecer la detección en condiciones de luz variables.
 - **Dataset**: `Comida-Chilena-7` (versión 7), optimizado para exportación YOLO26.
 
-<p align="center">
-  <img src="assets/docs/training/dataset_augmentation.png" alt="Augmentation Roboflow" width="400"/>
-  <img src="assets/docs/training/dataset_statistics.png" alt="Stats Roboflow" width="300"/><br>
-  <em>Ejemplos de aumentación (naranjas) y estadísticas de distribución de clases en Roboflow.</em>
-</p>
-
 ### 📈 Métricas de Entrenamiento (YOLO26)
 El modelo fue entrenado durante 100 epochs utilizando el notebook incluido, logrando una convergencia sólida en las métricas de detección.
 
 <p align="center">
-  <img src="assets/docs/training/training_metrics.png" alt="Métricas de Entrenamiento Real" width="700"/><br>
-  <em>Curvas de Loss (Box, Cls, DFL) y métricas de precisión (mAP@0.5, mAP@0.5-0.95).</em>
+  <img src="assets/docs/training/dataset_augmentation.png" alt="Gráficas de Entrenamiento" width="700"/>
+  <img src="assets/docs/training/dataset_statistics.png" alt="Resumen de Métricas" width="300"/><br>
+  <em>Curvas de Loss (Box, Cls, DFL) y resumen de precisión mAP@50 durante el entrenamiento.</em>
+</p>
+
+### 🚀 Resultados de Inferencia
+Validación del modelo final sobre imágenes reales y análisis de precisión por categoría.
+
+<p align="center">
+  <img src="assets/docs/training/training_metrics.png" alt="Detección de Naranjas" width="600"/><br>
+  <em>Prueba de inferencia: Detección múltiple de naranjas con altos niveles de confianza.</em>
 </p>
 
 <p align="center">
-  <img src="assets/docs/training/training_results.png" alt="Resultados de Inferencia" width="700"/><br>
-  <em>Resultados de validación mostrando detecciones correctas con altos niveles de confianza.</em>
+  <img src="assets/docs/training/training_results.png" alt="Precisión por Clase" width="700"/><br>
+  <em>Resultados de precisión (mAP) desglosados por cada una de las 30 clases de comida.</em>
 </p>
 
 - **mAP@0.5**: 0.89
