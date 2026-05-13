@@ -85,20 +85,34 @@ Este notebook detalla:
 - Configuración de hiperparámetros (Epochs: 100, Optimizer: auto, Mixup: 0.1).
 - Proceso de exportación a formatos ONNX y TFLite.
 
-### 📊 Curación del Dataset
-El dataset consiste en más de **5,000 imágenes** curadas de comida chilena y latina, recolectadas y etiquetadas manualmente para asegurar la calidad de las bounding boxes.
+### 📊 Curación y Aumentación (Roboflow)
+El pipeline de datos se gestionó íntegramente con **Roboflow**, permitiendo una curación precisa y la generación de aumentaciones para mejorar la generalización del modelo.
 
 <p align="center">
-  <img src="assets/docs/training/labeling_v2.png" alt="Proceso de Etiquetado" width="600"/><br>
-  <em>Interfaz de etiquetado manual para platos de comida chilena (Cazuela, Empanadas, etc.)</em>
+  <img src="assets/docs/training/roboflow_labeling.png" alt="Etiquetado en Roboflow" width="600"/><br>
+  <em>Interfaz de etiquetado manual para platos de comida chilena.</em>
+</p>
+
+- **Aumentación de Datos**: Se aplicaron técnicas de rotación, cambios de brillo, ruido y mosaico para fortalecer la detección en condiciones de luz variables.
+- **Dataset**: `Comida-Chilena-7` (versión 7), optimizado para exportación YOLO26.
+
+<p align="center">
+  <img src="assets/docs/training/roboflow_augmentation.png" alt="Augmentation Roboflow" width="400"/>
+  <img src="assets/docs/training/roboflow_stats.png" alt="Stats Roboflow" width="300"/><br>
+  <em>Ejemplos de aumentación y estadísticas de distribución de clases en Roboflow.</em>
 </p>
 
 ### 📈 Métricas de Entrenamiento (YOLO26)
-El modelo fue entrenado durante 100 epochs en una GPU NVIDIA RTX, optimizando el mAP para dispositivos móviles.
+El modelo fue entrenado durante 100 epochs utilizando el notebook incluido, logrando una convergencia sólida en las métricas de detección.
 
 <p align="center">
-  <img src="assets/docs/training/metrics_v2.png" alt="Métricas de Entrenamiento" width="700"/><br>
-  <em>Curvas de Loss (Box, Obj, Cls) y Precisión (mAP@0.5) durante el entrenamiento.</em>
+  <img src="assets/docs/training/training_metrics.png" alt="Métricas de Entrenamiento Real" width="700"/><br>
+  <em>Curvas de Loss (Box, Cls, DFL) y métricas de precisión (mAP@0.5, mAP@0.5-0.95).</em>
+</p>
+
+<p align="center">
+  <img src="assets/docs/training/training_results.png" alt="Resultados de Inferencia" width="700"/><br>
+  <em>Resultados de validación mostrando detecciones correctas con altos niveles de confianza.</em>
 </p>
 
 - **mAP@0.5**: 0.89
