@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:tflite_flutter/tflite_flutter.dart'
+    if (dart.library.js_util) 'tflite_stub.dart'
+    if (dart.library.html) 'tflite_stub.dart';
 
 import '../../domain/models/nutrition_models.dart';
 import '../../domain/repositories/food_provider.dart';
