@@ -36,7 +36,7 @@
 | :--- | :--- |
 | 📦 **APK Directo** | [Descargar última release](https://github.com/Paimilla/nutrifoto/releases) |
 | 🎬 **Video Demo** | [Ver Video en YouTube](https://youtu.be/Papv_p2c90o?si=4MR1eUosuUuBJtQS) |
-| 🌐 **Appetize.io** | [Abrir en navegador](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) (emulador Android real) |
+| 🌐 **Appetize.io** | [Abrir en navegador](https://appetize.io/app/b_gockvto6qiz4mdnfkatflaezui) (emulador Android real) |
 
 ---
 

@@ -51,7 +51,7 @@ class AppBootstrap {
       geminiApiKey:
           const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'AIzaSyDfzEiD7bPjGhDDtVXthv5wD1L3PWUT0Zs'),
       groqApiKey:
-          const String.fromEnvironment('GROQ_API_KEY', defaultValue: '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'),
+          const String.fromEnvironment('GROQ_API_KEY', defaultValue: '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'),
       edamamAppId:
           const String.fromEnvironment('EDAMAM_APP_ID', defaultValue: '4141d0d4'),
       edamamAppKey:
