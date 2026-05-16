@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nutrifoto_app/application/usecases/insights_usecases.dart';
 import 'package:nutrifoto_app/domain/models/tracking_models.dart';
-import 'package:nutrifoto_app/domain/models/nutrition_models.dart';
 
 void main() {
   group('InsightsUseCases', () {

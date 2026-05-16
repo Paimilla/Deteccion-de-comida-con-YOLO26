@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/nutrition_models.dart';
@@ -7,8 +8,15 @@ import '../../domain/repositories/tracking_repository.dart';
 class SharedPrefsTrackingRepository implements TrackingRepository {
   final SharedPreferences _prefs;
   static const String _key = 'nutrifoto_db';
+  final _updateController = StreamController<void>.broadcast();
 
   SharedPrefsTrackingRepository(this._prefs);
+
+  @override
+  Stream<void> get onRepositoryUpdated => _updateController.stream;
+
+  @override
+  void notifyUpdate() => _updateController.add(null);
 
   Future<Map<String, dynamic>> _loadDb() async {
     final raw = _prefs.getString(_key);
@@ -38,12 +46,20 @@ class SharedPrefsTrackingRepository implements TrackingRepository {
 
   @override
   Future<void> saveEntry(DiaryEntry entry) async {
+    await saveEntries([entry]);
+  }
+
+  @override
+  Future<void> saveEntries(List<DiaryEntry> entriesList) async {
     final db = await _loadDb();
     final entries = (db['entries'] as List?) ?? <dynamic>[];
-    entries.removeWhere((e) => (e as Map<String, dynamic>)['id'] == entry.id);
-    entries.add(_entryToJson(entry));
+    for (final entry in entriesList) {
+      entries.removeWhere((e) => (e as Map<String, dynamic>)['id'] == entry.id);
+      entries.add(_entryToJson(entry));
+    }
     db['entries'] = entries;
     await _saveDb(db);
+    notifyUpdate();
   }
 
   @override

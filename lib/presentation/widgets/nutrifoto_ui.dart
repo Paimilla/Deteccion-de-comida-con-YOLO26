@@ -208,6 +208,8 @@ class NutrifotoImage extends StatelessWidget {
   final String name;
   final double size;
   final BoxFit fit;
+  final String? mealTypeHint;
+  final bool useOptimization;
 
   const NutrifotoImage({
     super.key,
@@ -215,6 +217,8 @@ class NutrifotoImage extends StatelessWidget {
     required this.name,
     this.size = 28,
     this.fit = BoxFit.cover,
+    this.mealTypeHint,
+    this.useOptimization = true,
   });
 
   @override
@@ -223,8 +227,105 @@ class NutrifotoImage extends StatelessWidget {
       return FoodPlaceholder(name: name, size: size);
     }
 
+    // Optimizar URL si es necesario
+    final optimizedUrl = useOptimization
+        ? _OptimizedNetworkImage(
+            imageUrl: imageUrl!,
+            fit: fit,
+            name: name,
+            mealTypeHint: mealTypeHint,
+          )
+        : _LegacyNetworkImage(
+            imageUrl: imageUrl!,
+            fit: fit,
+            name: name,
+          );
+
+    return optimizedUrl;
+  }
+}
+
+/// Versión optimizada con caché mejorado
+class _OptimizedNetworkImage extends StatelessWidget {
+  final String imageUrl;
+  final BoxFit fit;
+  final String name;
+  final String? mealTypeHint;
+
+  const _OptimizedNetworkImage({
+    required this.imageUrl,
+    required this.fit,
+    required this.name,
+    this.mealTypeHint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final optimalWidth = _getOptimalWidth(screenWidth);
+
     return CachedNetworkImage(
-      imageUrl: imageUrl!,
+      imageUrl: _buildOptimizedUrl(imageUrl, optimalWidth),
+      fit: fit,
+      memCacheHeight: (screenWidth * 1.5).toInt(),
+      memCacheWidth: optimalWidth,
+      maxHeightDiskCache: 800,
+      maxWidthDiskCache: 800,
+      placeholder: (context, url) => _buildPlaceholder(),
+      errorWidget: (context, url, error) => FoodPlaceholder(name: name, size: 28),
+    );
+  }
+
+  /// Construye URL optimizada
+  String _buildOptimizedUrl(String url, int width) {
+    if (url.contains('unsplash.com')) {
+      if (url.contains('?')) {
+        url = url.split('?').first;
+      }
+      return '$url?w=$width&q=80&auto=format&fit=crop';
+    }
+    return url;
+  }
+
+  /// Calcula ancho óptimo según pantalla
+  int _getOptimalWidth(double screenWidth) {
+    if (screenWidth < 400) return 300;
+    if (screenWidth < 600) return 400;
+    if (screenWidth < 900) return 600;
+    return 800;
+  }
+
+  /// Placeholder mejorado
+  Widget _buildPlaceholder() {
+    return Container(
+      color: NutrifotoColors.primary.withValues(alpha: 0.1),
+      child: const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+/// Versión legado (fallback)
+class _LegacyNetworkImage extends StatelessWidget {
+  final String imageUrl;
+  final BoxFit fit;
+  final String name;
+
+  const _LegacyNetworkImage({
+    required this.imageUrl,
+    required this.fit,
+    required this.name,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
       fit: fit,
       placeholder: (context, url) => Container(
         color: NutrifotoColors.primary.withValues(alpha: 0.1),
@@ -232,8 +333,7 @@ class NutrifotoImage extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
-      errorWidget: (context, url, error) =>
-          FoodPlaceholder(name: name, size: size),
+      errorWidget: (context, url, error) => FoodPlaceholder(name: name, size: 28),
     );
   }
 }

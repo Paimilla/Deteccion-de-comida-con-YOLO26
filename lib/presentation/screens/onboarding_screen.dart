@@ -198,8 +198,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    // Go to signup (final registration step)
-    await Navigator.pushReplacementNamed(context, AppRoutes.signup);
+    // Ir directamente a la pantalla principal (Home)
+    await Navigator.pushReplacementNamed(context, AppRoutes.hoy);
   }
 
   double _calcKcal() {

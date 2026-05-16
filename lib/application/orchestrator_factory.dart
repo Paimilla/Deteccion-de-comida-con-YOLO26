@@ -11,7 +11,6 @@ import '../infrastructure/providers/usda_provider.dart';
 import '../infrastructure/services/api_config.dart';
 import '../infrastructure/services/gemini_nlp_service.dart';
 import '../infrastructure/services/gemini_translation_service.dart';
-import '../infrastructure/services/libretranslate_service.dart';
 import 'food_orchestrator.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -92,16 +91,17 @@ class OrchestratorFactory {
     final cascadeRecipes = CascadeRecipeProvider(recipeProviders);
 
     // ── Servicio de Traducción (Gemini como prioridad) ──
-    final geminiNlp = GeminiNlpService(apiKey: config.geminiApiKey);
+    final geminiNlp = GeminiNlpService(
+      apiKey: config.geminiApiKey,
+      groqApiKey: config.groqApiKey,
+    );
     final TranslationService translationService;
     
     if (config.geminiApiKey.isNotEmpty) {
       translationService = GeminiTranslationService(geminiNlp);
     } else {
-      translationService = LibreTranslateService(
-        baseUrl: config.libreTranslateBaseUrl,
-        apiKey: config.libreTranslateApiKey,
-      );
+      // Si no hay key, usamos un fallback básico (podría ser un servicio dummy o tirar error)
+      translationService = GeminiTranslationService(geminiNlp); 
     }
 
     return FoodOrchestrator(

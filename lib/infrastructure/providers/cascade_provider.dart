@@ -57,17 +57,25 @@ class CascadeRecipeProvider implements RecipeProvider {
 
   @override
   Future<List<FoodItem>> searchRecipes(String ingredientEn) async {
+    final allResults = <FoodItem>[];
+    final seenNames = <String>{};
+
     for (final provider in _providers) {
       try {
         final results = await provider.searchRecipes(ingredientEn);
-        if (results.isNotEmpty) {
-          debugPrint('🍳 CascadeRecipe: ${results.length} resultado(s) de ${provider.runtimeType}');
-          return results;
+        for (final item in results) {
+          final key = item.nameEs.toLowerCase().trim();
+          if (!seenNames.contains(key)) {
+            seenNames.add(key);
+            allResults.add(item);
+          }
         }
+        debugPrint('🍳 CascadeRecipe: ${results.length} de ${provider.runtimeType} (${allResults.length} únicos totales)');
+        if (allResults.length >= 12) break; // Enough results
       } catch (e) {
         debugPrint('⚠️ CascadeRecipe: Error en ${provider.runtimeType}: $e');
       }
     }
-    return const [];
+    return allResults;
   }
 }

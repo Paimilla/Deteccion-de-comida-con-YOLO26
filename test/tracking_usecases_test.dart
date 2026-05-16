@@ -9,8 +9,19 @@ class FakeTrackingRepository implements TrackingRepository {
   NutritionGoals goals = const NutritionGoals(kcal: 2000, proteinG: 100, carbsG: 200, fatG: 60);
 
   @override
+  Stream<void> get onRepositoryUpdated => const Stream.empty();
+  
+  @override
+  void notifyUpdate() {}
+
+  @override
   Future<void> saveEntry(DiaryEntry entry) async {
     entries.add(entry);
+  }
+
+  @override
+  Future<void> saveEntries(List<DiaryEntry> items) async {
+    entries.addAll(items);
   }
 
   @override

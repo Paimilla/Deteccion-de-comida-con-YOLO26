@@ -4,21 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'application/app_bootstrap.dart';
 import 'application/app_routes.dart';
 import 'application/app_services.dart';
-import 'presentation/screens/history_screen.dart';
 import 'presentation/screens/plan_screen.dart';
 import 'presentation/screens/statistics_screen.dart';
 import 'presentation/screens/achievements_screen.dart';
 import 'presentation/screens/home_screen.dart';
-import 'presentation/screens/hydration_screen.dart';
-import 'presentation/screens/manual_entry_screen.dart';
-import 'presentation/screens/add_food_hub_screen.dart';
 import 'presentation/screens/recipes_screen.dart';
-import 'presentation/screens/scanner_barcode_screen.dart';
 import 'presentation/screens/scanner_camera_screen.dart';
-import 'presentation/screens/search_screen.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'presentation/screens/assistant_screen.dart';
-import 'presentation/screens/voice_screen.dart';
 import 'presentation/screens/welcome_screen.dart';
 import 'presentation/screens/signup_screen.dart';
 import 'presentation/screens/onboarding_screen.dart';
@@ -317,8 +310,14 @@ class _NutrifotoAppState extends State<NutrifotoApp> {
         // Fitia Navigation Tabs
         AppRoutes.hoy: (_) => HomeScreen(services: widget.services),
         AppRoutes.plan: (_) => PlanScreen(services: widget.services),
-        AppRoutes.explorar: (_) => SearchScreen(services: widget.services),
         AppRoutes.progreso: (_) => StatisticsScreen(services: widget.services),
+        AppRoutes.welcome: (_) => WelcomeScreen(services: widget.services),
+        AppRoutes.signup: (_) => SignupScreen(services: widget.services),
+        AppRoutes.onboarding: (_) => OnboardingScreen(services: widget.services),
+        AppRoutes.scannerCamera: (_) => ScannerCameraScreen(services: widget.services),
+        AppRoutes.recipes: (_) => RecipesScreen(services: widget.services),
+        AppRoutes.achievements: (_) => AchievementsScreen(services: widget.services),
+        AppRoutes.assistant: (_) => AssistantScreen(services: widget.services),
         AppRoutes.perfil: (_) => SettingsScreen(
           services: widget.services,
           isDarkMode: _themeMode == ThemeMode.dark,
@@ -328,28 +327,6 @@ class _NutrifotoAppState extends State<NutrifotoApp> {
             });
           },
         ),
-
-        // Food Entry Flows
-        AppRoutes.welcome: (_) => WelcomeScreen(services: widget.services),
-        AppRoutes.signup: (_) => SignupScreen(services: widget.services),
-        AppRoutes.addFoodHub: (_) => const AddFoodHubScreen(),
-        AppRoutes.onboarding: (_) =>
-            OnboardingScreen(services: widget.services),
-        AppRoutes.scannerCamera: (_) =>
-            ScannerCameraScreen(services: widget.services),
-        AppRoutes.scannerBarcode: (_) =>
-            ScannerBarcodeScreen(services: widget.services),
-        AppRoutes.search: (_) => SearchScreen(services: widget.services),
-        AppRoutes.recipes: (_) => RecipesScreen(services: widget.services),
-        AppRoutes.voice: (_) => VoiceScreen(services: widget.services),
-        AppRoutes.manualEntry: (_) =>
-            ManualEntryScreen(services: widget.services),
-
-        // Legacy utility routes
-        AppRoutes.achievements: (_) =>
-            AchievementsScreen(services: widget.services),
-        AppRoutes.hydration: (_) => HydrationScreen(services: widget.services),
-        AppRoutes.assistant: (_) => AssistantScreen(services: widget.services),
       },
     );
   }

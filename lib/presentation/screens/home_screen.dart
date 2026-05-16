@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _selectedDate = _dateOnly(DateTime.now());
   late DateTime _weekStart;
   late final AnimationController _ambientController;
+  late final StreamSubscription<void> _repoSubscription;
 
   Map<MealSlot, double> _mealKcal = {
     MealSlot.desayuno: 0,
@@ -83,11 +85,17 @@ class _HomeScreenState extends State<HomeScreen>
     _weekStart = _startOfWeek(_selectedDate);
     _loadStreakData();
     _refreshSummary();
+
+    // Escuchar actualizaciones del repositorio para refrescar instantáneamente
+    _repoSubscription = widget.services.trackingUseCases.repository.onRepositoryUpdated.listen((_) {
+      if (mounted) _refreshSummary(showLoading: false);
+    });
   }
 
   @override
   void dispose() {
     _ambientController.dispose();
+    _repoSubscription.cancel();
     super.dispose();
   }
 
@@ -128,8 +136,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<DateTime> get _weekDays =>
       List.generate(7, (i) => _weekStart.add(Duration(days: i)));
 
-  Future<void> _refreshSummary() async {
-    setState(() => _isLoading = true);
+  Future<void> _refreshSummary({bool showLoading = true}) async {
+    if (showLoading) setState(() => _isLoading = true);
     final summary = await widget.services.trackingUseCases.getDailySummary(
       _selectedDate,
     );
@@ -223,7 +231,10 @@ class _HomeScreenState extends State<HomeScreen>
     await Navigator.pushNamed(
       context,
       AppRoutes.scannerCamera,
-      arguments: {'mealSlot': slot},
+      arguments: {
+        'mealSlot': slot,
+        'date': _selectedDate,
+      },
     );
     if (mounted) {
       await _refreshSummary();
@@ -1370,6 +1381,28 @@ class _MealCardState extends State<_MealCard>
                       ),
                     ),
                     const SizedBox(width: 14),
+                    // BOTÓN: Sugerencias IA Contextuales
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.recipes,
+                          arguments: {'mealSlot': widget.mealSlot},
+                        );
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: NutrifotoColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: NutrifotoColors.primary.withValues(alpha: 0.3)),
+                        ),
+                        child: const Icon(Icons.auto_awesome, size: 20, color: NutrifotoColors.primary),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // Paste button (if clipboard has data)
                     if (MealClipboard.hasData && widget.onPaste != null)
                       GestureDetector(
@@ -1597,22 +1630,31 @@ class _SmartSuggestionsState extends State<_SmartSuggestions> {
     setState(() => _loading = true);
 
     try {
+      final hour = DateTime.now().hour;
+      final timeContext = hour < 12 ? 'mañana' : (hour < 18 ? 'tarde' : 'noche');
+
       final advice = await widget.services.geminiNlpService.generateNutritionalAdvice(
         kcalLeft: widget.goalKcal - widget.currentKcal,
-        proteinLeft: 150 - widget.protein, // Asumiendo meta genérica si no hay perfil
-        carbsLeft: 250 - widget.carbs,
-        fatLeft: 70 - widget.fat,
+        proteinLeft: (widget.goalKcal * 0.30 / 4) - widget.protein,
+        carbsLeft: (widget.goalKcal * 0.40 / 4) - widget.carbs,
+        fatLeft: (widget.goalKcal * 0.30 / 9) - widget.fat,
         userName: 'Nutrifoto User',
+        timeOfDay: timeContext,
       );
+      
       if (mounted) {
         setState(() {
-          _advice = advice;
+          _advice = advice ?? '¡Sigue así con tu registro hoy!';
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error fetching AI advice: $e');
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          _advice = 'No pude conectar con el Coach. ¡Tú puedes!';
+          _loading = false;
+        });
       }
     }
   }

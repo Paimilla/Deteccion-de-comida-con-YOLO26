@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' as io show File;
+import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +33,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
     with TickerProviderStateMixin {
   // --- Shared state ---
   MealSlot _mealSlot = MealSlot.desayuno;
+  DateTime _targetDate = DateTime.now();
   int _selectedTab = 0;
   bool _argsApplied = false;
 
@@ -56,6 +58,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _scanLineController;
 
   // --- Search tab state ---
   final _searchCtrl = TextEditingController();
@@ -133,6 +136,11 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
       curve: Curves.easeInOut,
     ));
 
+    _scanLineController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
     _recipeFeaturedItems = List.from(_staticRecipeSuggestions);
     _initSpeech();
     _loadInitialRecipes();
@@ -156,8 +164,13 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
     super.didChangeDependencies();
     if (_argsApplied) return;
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map && args['mealSlot'] is MealSlot) {
-      _mealSlot = args['mealSlot'] as MealSlot;
+    if (args is Map) {
+      if (args['mealSlot'] is MealSlot) {
+        _mealSlot = args['mealSlot'] as MealSlot;
+      }
+      if (args['date'] is DateTime) {
+        _targetDate = args['date'] as DateTime;
+      }
     }
     _argsApplied = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -168,6 +181,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _scanLineController.dispose();
     _cameraController?.dispose();
     _barcodeController?.dispose();
     _searchCtrl.dispose();
@@ -196,9 +210,11 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   /// Disposes the barcode scanner and restarts the food camera.
   Future<void> _switchToFoodMode() async {
     // Dispose the barcode controller to release the hardware
-    if (_flashEnabled) {
-      await _barcodeController?.toggleTorch(); // Si estaba prendido, toggle lo apaga
-    }
+    try {
+      if (_flashEnabled) {
+        await _barcodeController?.toggleTorch(); // Si estaba prendido, toggle lo apaga
+      }
+    } catch (_) {}
     await _barcodeController?.dispose();
     _barcodeController = null;
 
@@ -312,6 +328,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   Future<void> _runAnalysis(String imagePath) async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _scanStep = 1;
       _scanProgress = 0.33;
@@ -319,6 +336,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
 
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _scanStep = 2;
       _scanProgress = 0.66;
@@ -377,13 +395,14 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
     HapticFeedback.mediumImpact();
     setState(() => _saving = true);
     await widget.services.trackingUseCases
-        .addFoodEntry(mealSlot: _mealSlot, food: item);
+        .addFoodEntry(mealSlot: _mealSlot, food: item, timestamp: _targetDate);
     if (!mounted) return;
     HapticFeedback.lightImpact();
     setState(() => _saving = false);
     if (mounted) {
+      final dateStr = '${_targetDate.day}/${_targetDate.month}';
       AppNotifier.success(
-          context, '${item.nameEs} agregado en ${_mealSlot.label}');
+          context, '${item.nameEs} agregado en ${_mealSlot.label} ($dateStr)');
       Navigator.of(context).maybePop();
     }
   }
@@ -505,24 +524,72 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
       _voiceResult = null;
     });
 
-    final results =
-        await widget.services.foodOrchestrator.searchFoodInSpanish(input);
-    if (!mounted) return;
+    try {
+      // Usamos el NLP para parsear y ESTIMAR macros directamente
+      final parsedList = await widget.services.nlp.parseVoiceTranscription(input, currentMealSlot: _mealSlot);
 
-    if (results.isNotEmpty) {
-      final item = results.first;
-      await widget.services.trackingUseCases
-          .addFoodEntry(mealSlot: _mealSlot, food: item);
       if (!mounted) return;
+
+      if (parsedList != null && parsedList.isNotEmpty) {
+        final List<String> addedNames = [];
+        for (int i = 0; i < parsedList.length; i++) {
+          final p = parsedList[i];
+          // Si la IA nos dio macros (estimación directa), creamos el FoodItem al vuelo
+          if (p.kcal != null) {
+            final estimatedItem = FoodItem(
+              itemId: 'ai_voice_${_targetDate.millisecondsSinceEpoch}_$i',
+              nameEs: p.foodName,
+              source: FoodSource.localChile,
+              portion: Portion(amount: p.amount, unit: p.unit),
+              nutrition: Nutrition(
+                kcal: p.kcal!,
+                proteinG: p.protein ?? 0,
+                carbsG: p.carbs ?? 0,
+                fatG: p.fat ?? 0,
+              ),
+              imageUrl:
+                  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400&auto=format&fit=crop',
+            );
+
+            await widget.services.trackingUseCases.addFoodEntry(
+              mealSlot: p.mealSlot,
+              food: estimatedItem,
+              timestamp: _targetDate,
+            );
+            addedNames.add(p.foodName);
+          } else {
+            // Fallback: Si no hay macros, buscar en la DB como antes
+            final results = await widget.services.foodOrchestrator
+                .searchFoodInSpanish(p.foodName);
+            if (results.isNotEmpty) {
+              await widget.services.trackingUseCases.addFoodEntry(
+                mealSlot: p.mealSlot,
+                food: results.first,
+                timestamp: _targetDate,
+              );
+              addedNames.add(results.first.nameEs);
+            }
+          }
+        }
+
+        setState(() {
+          _voiceLoading = false;
+          _voiceResult = 'Registrado: ${addedNames.join(", ")}';
+        });
+        if (mounted) {
+          final dateStr = '${_targetDate.day}/${_targetDate.month}';
+          AppNotifier.success(context, 'Registrado en ${_mealSlot.label} ($dateStr): ${addedNames.join(", ")}');
+        }
+      } else {
+        setState(() {
+          _voiceLoading = false;
+          _voiceResult = 'No se pudo interpretar el comando';
+        });
+      }
+    } catch (e) {
       setState(() {
         _voiceLoading = false;
-        _voiceResult = '${item.nameEs} agregado (${item.nutrition.kcal.toStringAsFixed(0)} kcal)';
-      });
-      AppNotifier.success(context, '${item.nameEs} agregado');
-    } else {
-      setState(() {
-        _voiceLoading = false;
-        _voiceResult = 'No se encontró alimento';
+        _voiceResult = 'Error: $e';
       });
     }
   }
@@ -530,11 +597,15 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   // ===== SAVE ITEM (Search/Recipe) =====
   Future<void> _saveItem(FoodItem item) async {
     HapticFeedback.mediumImpact();
+    // Cerramos el BottomSheet de detalle
+    if (mounted) Navigator.of(context).pop();
+    
     await widget.services.trackingUseCases
-        .addFoodEntry(mealSlot: _mealSlot, food: item);
+        .addFoodEntry(mealSlot: _mealSlot, food: item, timestamp: _targetDate);
     if (!mounted) return;
+    final dateStr = '${_targetDate.day}/${_targetDate.month}';
     AppNotifier.success(
-        context, '${item.nameEs} agregado en ${_mealSlot.label}');
+        context, '${item.nameEs} agregado en ${_mealSlot.label} ($dateStr)');
   }
 
   LinearGradient _gradientForSlot(MealSlot slot) {
@@ -587,8 +658,6 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
       case 2:
         return _buildSearchTab();
       case 3:
-        return _buildManualTab();
-      case 4:
         return _buildVoiceTab();
       default:
         return _buildCameraTab();
@@ -641,40 +710,68 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
                         ),
         ),
 
-        // Food scanner area overlay
+        // Food scanner area overlay - NEW HIGH TECH DESIGN
         if (!_barcodeMode && _cameraReady && _cameraController != null)
           Positioned.fill(
-            child: IgnorePointer( // Let taps pass through
+            child: IgnorePointer(
               child: Center(
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.85,
-                  height: MediaQuery.of(context).size.width * 0.85, // Perfect square
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white.withAlpha(0xCC), width: 3), // .withAlpha(204) represents .withValues(alpha: 0.8) which is ~204 out of 255
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(0x33), // represents .withValues(alpha: 0.2)
-                        spreadRadius: 2,
-                        blurRadius: 10,
-                      )
-                    ],
-                  ),
-                  child: const Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 16.0),
-                      child: Text(
-                        'Enfoca la comida aquí',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          shadows: [Shadow(color: Colors.black87, blurRadius: 6)],
-                        ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // The main scanning box with corner markers
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.85,
+                      height: MediaQuery.of(context).size.width * 0.85,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white.withAlpha(0x22), width: 1),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Stack(
+                        children: [
+                          // Top Left Corner
+                          Positioned(
+                            top: 0, left: 0,
+                            child: Container(width: 40, height: 40, decoration: const BoxDecoration(
+                              border: Border(top: BorderSide(color: Colors.white, width: 4), left: BorderSide(color: Colors.white, width: 4)),
+                              borderRadius: BorderRadius.only(topLeft: Radius.circular(30)),
+                            )),
+                          ),
+                          // Top Right Corner
+                          Positioned(
+                            top: 0, right: 0,
+                            child: Container(width: 40, height: 40, decoration: const BoxDecoration(
+                              border: Border(top: BorderSide(color: Colors.white, width: 4), right: BorderSide(color: Colors.white, width: 4)),
+                              borderRadius: BorderRadius.only(topRight: Radius.circular(30)),
+                            )),
+                          ),
+                          // Bottom Left Corner
+                          Positioned(
+                            bottom: 0, left: 0,
+                            child: Container(width: 40, height: 40, decoration: const BoxDecoration(
+                              border: Border(bottom: BorderSide(color: Colors.white, width: 4), left: BorderSide(color: Colors.white, width: 4)),
+                              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30)),
+                            )),
+                          ),
+                          // Bottom Right Corner
+                          Positioned(
+                            bottom: 0, right: 0,
+                            child: Container(width: 40, height: 40, decoration: const BoxDecoration(
+                              border: Border(bottom: BorderSide(color: Colors.white, width: 4), right: BorderSide(color: Colors.white, width: 4)),
+                              borderRadius: BorderRadius.only(bottomRight: Radius.circular(30)),
+                            )),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    // Pulsing center indicator
+                    ScaleTransition(
+                      scale: _pulseAnimation,
+                      child: Container(
+                        width: 10, height: 10,
+                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -856,85 +953,126 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
   }
 
   Widget _buildAnalyzingView() {
-    const steps = ['Preparando...', 'Analizando con IA...', 'Completado!'];
+    const steps = ['PREPARANDO...', 'ANALIZANDO CON IA...', 'COMPLETADO!'];
+    final width = MediaQuery.of(context).size.width;
 
     return Container(
       key: const ValueKey('analyzing'),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0F25), Color(0xFF151D3A)],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 120,
-              height: 120,
+      color: Colors.black,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Background: The captured image with a heavy blur
+          if (_capturedImagePath != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.6,
+                child: Image.file(
+                  io.File(_capturedImagePath!),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                color: Colors.black.withAlpha(0x66),
+              ),
+            ),
+          ),
+
+          // Futuristic Scanning Box
+          Center(
+            child: Container(
+              width: width * 0.8,
+              height: width * 0.8,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withAlpha(0x33), width: 1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              clipBehavior: Clip.antiAlias,
               child: Stack(
-                alignment: Alignment.center,
                 children: [
-                  SizedBox(
-                    width: 110,
-                    height: 110,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: _scanProgress),
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, _) {
-                        return CircularProgressIndicator(
-                          value: value,
-                          strokeWidth: 6,
-                          backgroundColor: NutrifotoColors.surface,
-                          valueColor: const AlwaysStoppedAnimation(
-                              NutrifotoColors.primary),
-                        );
-                      },
-                    ),
+                  // The Laser Scan Line
+                  AnimatedBuilder(
+                    animation: _scanLineController,
+                    builder: (context, child) {
+                      return Positioned(
+                        top: _scanLineController.value * (width * 0.8),
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 2,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: NutrifotoColors.primary.withAlpha(0xCC),
+                                blurRadius: 10,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                            color: NutrifotoColors.primary,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  Text(
-                    '${(_scanProgress * 100).toInt()}%',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800),
+                  // Techy text scanning effect
+                  Positioned(
+                    bottom: 20, left: 20,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('ANALYSIS_MODE: ACTIVE', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                        const SizedBox(height: 4),
+                        Text('ENTITY_SCAN: ${_scanStep * 33}%', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Text(
-                steps[_scanStep.clamp(0, steps.length - 1)],
-                key: ValueKey(_scanStep),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600),
+          ),
+
+          // Center Progress Ring
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 380), // Push down below scanning box
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Column(
+                  key: ValueKey(_scanStep),
+                  children: [
+                    Text(
+                      steps[_scanStep.clamp(0, steps.length - 1)],
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 180,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: _scanProgress,
+                          minHeight: 4,
+                          backgroundColor: Colors.white.withAlpha(0x22),
+                          valueColor: const AlwaysStoppedAnimation(NutrifotoColors.primary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: _gradientForSlot(_mealSlot),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Agregando a: ${_mealSlot.label}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -952,150 +1090,168 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
 
     final item = _result!;
 
-    return Container(
-      key: const ValueKey('result'),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0F25), Color(0xFF151D3A)],
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.8, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, scale, child) {
+        return Opacity(
+          opacity: ((scale - 0.8) / 0.2).clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: scale,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        key: const ValueKey('result'),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0A0F25), Color(0xFF151D3A)],
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              if (_capturedImagePath != null || (item.imageUrl != null && item.imageUrl!.isNotEmpty))
-                Container(
-                  height: 260,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: NutrifotoColors.primary.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: _capturedImagePath != null
-                        ? (kIsWeb
-                            ? Image.network(_capturedImagePath!, fit: BoxFit.cover)
-                            : Image.file(io.File(_capturedImagePath!), fit: BoxFit.cover))
-                        : NutrifotoImage(
-                            imageUrl: item.imageUrl,
-                            name: item.nameEs,
-                            size: 64,
-                          ),
-                  ),
-                ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: NutrifotoColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.nameEs,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800)),
-                    if (item.metadata['brand'] != null && item.metadata['brand'].toString().isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.metadata['brand'].toString(),
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _CircularMacro(
-                          label: 'Calorías',
-                          value: item.nutrition.kcal,
-                          unit: 'kcal',
-                          target: 2200,
-                          color: Colors.orange,
-                        ),
-                        _CircularMacro(
-                          label: 'Prot',
-                          value: item.nutrition.proteinG,
-                          unit: 'g',
-                          target: 176,
-                          color: Colors.blue,
-                        ),
-                        _CircularMacro(
-                          label: 'Carbs',
-                          value: item.nutrition.carbsG,
-                          unit: 'g',
-                          target: 231,
-                          color: Colors.green,
-                        ),
-                        _CircularMacro(
-                          label: 'Grasa',
-                          value: item.nutrition.fatG,
-                          unit: 'g',
-                          target: 63,
-                          color: Colors.red,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                if (_capturedImagePath != null ||
+                    (item.imageUrl != null && item.imageUrl!.isNotEmpty))
+                  Container(
+                    height: 260,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: NutrifotoColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: _capturedImagePath != null
+                          ? (kIsWeb
+                              ? Image.network(_capturedImagePath!,
+                                  fit: BoxFit.cover)
+                              : Image.file(io.File(_capturedImagePath!),
+                                  fit: BoxFit.cover))
+                          : NutrifotoImage(
+                              imageUrl: item.imageUrl,
+                              name: item.nameEs,
+                              size: 64,
+                            ),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: NutrifotoColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.nameEs,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800)),
+                      if (item.metadata['brand'] != null &&
+                          item.metadata['brand'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          item.metadata['brand'].toString(),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _CircularMacro(
+                            label: 'Calorías',
+                            value: item.nutrition.kcal,
+                            unit: 'kcal',
+                            target: 2200,
+                            color: Colors.orange,
+                          ),
+                          _CircularMacro(
+                            label: 'Prot',
+                            value: item.nutrition.proteinG,
+                            unit: 'g',
+                            target: 176,
+                            color: Colors.blue,
+                          ),
+                          _CircularMacro(
+                            label: 'Carbs',
+                            value: item.nutrition.carbsG,
+                            unit: 'g',
+                            target: 231,
+                            color: Colors.green,
+                          ),
+                          _CircularMacro(
+                            label: 'Grasa',
+                            value: item.nutrition.fatG,
+                            unit: 'g',
+                            target: 63,
+                            color: Colors.red,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.tonal(
+                        onPressed: _saving ? null : _retake,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('Retomar',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _saving ? null : () => _saveResult(item),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                        Colors.white)))
+                            : const Text('Agregar',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: _saving ? null : _retake,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: const Text('Retomar',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _saving ? null : () => _saveResult(item),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(
-                                      Colors.white)))
-                          : const Text('Agregar',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1204,7 +1360,7 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
         item: item,
         mealSlot: _mealSlot,
         services: widget.services,
-        onSave: _saveResult,
+        onSave: _saveItem,
       ),
     );
   }
@@ -1279,60 +1435,6 @@ class _ScannerCameraScreenState extends State<ScannerCameraScreen>
     );
   }
 
-  // ===== TAB 3: MANUAL =====
-  Widget _buildManualTab() {
-    return Container(
-      key: const ValueKey('manual_tab'),
-      color: NutrifotoColors.bg,
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildTabHeader('Registro Manual', Icons.edit_note_rounded),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: NutrifotoColors.primary.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.edit_note_rounded,
-                          color: NutrifotoColors.primary, size: 40),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Registro manual de alimentos',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Ingresa datos nutricionales en detalle',
-                        style: TextStyle(color: NutrifotoColors.textMuted)),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/manual',
-                            arguments: {'mealSlot': _mealSlot});
-                      },
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Abrir formulario'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ===== TAB 4: VOICE =====
   Widget _buildVoiceTab() {
@@ -1599,7 +1701,6 @@ class _CameraBottomTabBar extends StatelessWidget {
     (Icons.camera_alt_rounded, 'Escanear'),
     (Icons.menu_book_rounded, 'Recetas'),
     (Icons.search_rounded, 'Buscar'),
-    (Icons.edit_note_rounded, 'Lista'),
     (Icons.mic_rounded, 'Voz'),
   ];
 

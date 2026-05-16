@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
+import '../../domain/models/tracking_models.dart';
 
 const Color _accent = Color(0xFF8F62FF);
 const Color _accentSoft = Color(0xFF7448F0);
@@ -118,19 +119,35 @@ class _SignupScreenState extends State<SignupScreen>
       );
 
       // Verificar si tiene perfil nutricional
-      final hasProfile = await widget.services.trackingUseCases.hasUserProfile();
+      bool hasProfile = await widget.services.trackingUseCases.hasUserProfile();
+
+      if (!mounted) return;
+
+      if (!hasProfile) {
+        // Inicializar perfil básico para usuarios de Google
+        await widget.services.trackingUseCases.setNutritionGoals(const NutritionGoals(
+          kcal: 2000,
+          proteinG: 120,
+          carbsG: 230,
+          fatG: 60,
+        ));
+
+        await widget.services.trackingUseCases.saveUserProfile(UserProfile(
+          name: user.displayName,
+          gender: 'No especificado',
+          weightKg: 70,
+          heightCm: 170,
+          age: 30,
+          exercisePerWeek: 3,
+          createdAt: DateTime.now(),
+        ));
+        hasProfile = true;
+      }
 
       if (!mounted) return;
 
       if (hasProfile) {
         Navigator.pushReplacementNamed(context, AppRoutes.hoy);
-      } else {
-        // Ir al onboarding con nombre pre-llenado desde Google
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.onboarding,
-          arguments: {'prefillName': user.displayName},
-        );
       }
     } catch (e) {
       if (!mounted) return;

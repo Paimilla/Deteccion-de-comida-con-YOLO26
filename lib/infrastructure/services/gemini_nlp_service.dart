@@ -17,46 +17,41 @@ import '../../domain/models/tracking_models.dart';
 
 class GeminiNlpService {
   final String _apiKey;
-  final String _model;
+  final String _groqApiKey;
+  static const String _model = 'gemini-3.1-flash-lite';
   final http.Client _client;
 
   GeminiNlpService({
     required String apiKey,
-    String model = 'gemini-2.5-flash',
+    String groqApiKey = '',
     http.Client? client,
   })  : _apiKey = apiKey,
-        _model = model,
+        _groqApiKey = groqApiKey,
         _client = client ?? http.Client();
 
   // ── System Instruction exacto para el parser ──────────────────────────────
   // Gemini actuará como un extractor determinístico de entidades alimenticias.
   static const String systemInstruction = '''
-Eres un parser de comandos de voz para una aplicación de nutrición.
-Tu ÚNICO trabajo es extraer información estructurada del texto del usuario.
+Eres un experto en nutrición y análisis de lenguaje natural.
+Tu tarea es extraer alimentos de una frase y devolver un ARRAY JSON de objetos.
 
-REGLAS ESTRICTAS:
-1. SIEMPRE responde con JSON válido y NADA MÁS. Sin explicaciones, sin markdown.
-2. Extrae: alimento, cantidad, unidad y comida (bloque del día).
-3. Si el usuario no menciona cantidad, estima una porción estándar en gramos.
-4. Si el usuario no menciona comida, infiere según la hora actual o usa "almuerzo" por defecto.
-5. Normaliza el nombre del alimento a su forma más simple en español.
-6. Los valores válidos para "comida" son EXACTAMENTE: "desayuno", "almuerzo", "cena", "once", "snack".
-7. Si el usuario menciona múltiples alimentos, devuelve un array JSON.
+REGLAS CRÍTICAS:
+1. SIEMPRE devuelve una LISTA (array `[]`), incluso si solo hay un alimento.
+2. Si el usuario menciona múltiples alimentos (ej: "pollo con arroz"), DEBES crear un objeto separado para CADA UNO.
+3. Estima las calorías (kcal), proteínas, carbohidratos y grasas por la cantidad mencionada.
+4. Si no menciona cantidad, asume 100g.
 
-FORMATO DE RESPUESTA (un solo alimento):
-{"alimento": "pechuga de pollo", "cantidad": 150, "unidad": "gramos", "comida": "almuerzo"}
-
-FORMATO DE RESPUESTA (múltiples alimentos):
-[
-  {"alimento": "arroz", "cantidad": 200, "unidad": "gramos", "comida": "almuerzo"},
-  {"alimento": "pollo", "cantidad": 150, "unidad": "gramos", "comida": "almuerzo"}
-]
-
-EJEMPLOS DE ENTRADA → SALIDA:
-- "Agregame 150 gramos de pechuga de pollo al almuerzo" → {"alimento": "pechuga de pollo", "cantidad": 150, "unidad": "gramos", "comida": "almuerzo"}
-- "Desayuné dos huevos fritos con pan" → [{"alimento": "huevos fritos", "cantidad": 120, "unidad": "gramos", "comida": "desayuno"}, {"alimento": "pan", "cantidad": 60, "unidad": "gramos", "comida": "desayuno"}]
-- "Una manzana de snack" → {"alimento": "manzana", "cantidad": 180, "unidad": "gramos", "comida": "snack"}
-- "Ayer cené dos manzanas" → [{"alimento": "manzana", "cantidad": 180, "unidad": "gramos", "comida": "cena"}, {"alimento": "manzana", "cantidad": 180, "unidad": "gramos", "comida": "cena"}]
+FORMATO DE CADA OBJETO:
+{
+  "alimento": "nombre en español",
+  "cantidad": 100,
+  "unidad": "gramos",
+  "comida": "desayuno|almuerzo|cena|once|snack",
+  "kcal": 250,
+  "proteina": 20,
+  "carbohidratos": 30,
+  "grasa": 10
+}
 ''';
 
   static const String chatSystemInstruction = '''
@@ -78,34 +73,101 @@ CONOCIMIENTO ACTUAL DE LA APP:
 
   /// Parsea una transcripción de voz y devuelve los alimentos estructurados.
   /// Retorna null si no puede parsear o si la API falla.
-  Future<List<ParsedVoiceCommand>?> parseVoiceTranscription(String transcription) async {
-    if (_apiKey.isEmpty) {
-      debugPrint('⚠️ GeminiNlpService: API key vacía, usando fallback regex');
-      return null;
+  Future<List<ParsedVoiceCommand>?> parseVoiceTranscription(String transcription, {MealSlot? currentMealSlot}) async {
+    // Si no hay Groq API Key, intentamos Gemini directamente
+    if (_groqApiKey.isEmpty) {
+      return _parseWithGemini(transcription, currentMealSlot: currentMealSlot);
     }
 
     try {
-      debugPrint('🤖 Gemini NLP: parsing "$transcription"');
+      debugPrint('🚀 Groq NLP (Primary): parsing "$transcription"');
+      final fullPrompt = '$systemInstruction\n\nCONTEXTO ACTUAL: El usuario está en el bloque de "${currentMealSlot?.label ?? 'almuerzo'}". Si no especifica lo contrario, usa este bloque.\n\nAnaliza este comando de voz y genera el JSON: "$transcription"';
+      
+      final groqResult = await _callGroqBackup(fullPrompt, isJson: true);
+      if (groqResult != null) {
+        try {
+          final decoded = jsonDecode(groqResult);
+          List<dynamic> items;
+
+          if (decoded is List) {
+            items = decoded;
+          } else if (decoded is Map) {
+            // Buscar si hay una lista dentro de alguna clave común
+            final listKey = decoded.keys.firstWhere(
+              (k) => decoded[k] is List,
+              orElse: () => '',
+            );
+            if (listKey.isNotEmpty) {
+              items = decoded[listKey] as List;
+            } else {
+              items = [decoded];
+            }
+          } else {
+            items = [];
+          }
+
+          final List<ParsedVoiceCommand> results = [];
+          
+          for (var item in items) {
+            if (item is! Map) continue;
+            final data = item.cast<String, dynamic>();
+            
+            // Mapeo robusto de llaves
+            final double? kcal = (data['kcal'] ?? data['calorias'] ?? data['calories'])?.toDouble();
+            final double? protein = (data['proteina'] ?? data['proteinas'] ?? data['protein'] ?? data['proteins'])?.toDouble();
+            final double? carbs = (data['carbohidratos'] ?? data['carbs'] ?? data['carbohydrates'] ?? data['choc'])?.toDouble();
+            final double? fat = (data['grasa'] ?? data['grasas'] ?? data['fat'] ?? data['fats'])?.toDouble();
+
+            results.add(ParsedVoiceCommand(
+              foodName: data['alimento'] ?? data['nombre'] ?? 'Alimento desconocido',
+              amount: (data['cantidad'] ?? 100).toDouble(),
+              unit: data['unidad'] ?? 'gramos',
+              mealSlot: _parseMealSlot(data['comida'] ?? data['slot'] ?? 'almuerzo'),
+              kcal: kcal,
+              protein: protein,
+              carbs: carbs,
+              fat: fat,
+            ));
+          }
+          debugPrint('✅ Groq parseó ${results.length} alimento(s)');
+          return results;
+        } catch (e) {
+          debugPrint('❌ Error parseando JSON de Groq: $e');
+        }
+      }
+      
+      // Si Groq falla, intentamos Gemini como backup
+      return _parseWithGemini(transcription, currentMealSlot: currentMealSlot);
+    } catch (e) {
+      debugPrint('❌ Error en Groq (Primary), intentando Gemini: $e');
+      return _parseWithGemini(transcription, currentMealSlot: currentMealSlot);
+    }
+  }
+
+  /// Backup parser usando Gemini
+  Future<List<ParsedVoiceCommand>?> _parseWithGemini(String transcription, {MealSlot? currentMealSlot}) async {
+    if (_apiKey.isEmpty) return null;
+
+    try {
+      debugPrint('🤖 Gemini NLP (Backup): parsing "$transcription"');
 
       final url = Uri.parse(
         'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
       );
 
       final body = jsonEncode({
-        'system_instruction': {
-          'parts': [
-            {'text': systemInstruction}
-          ]
-        },
         'contents': [
           {
+            'role': 'user',
             'parts': [
-              {'text': transcription}
+              {
+                'text': 'INSTRUCCIONES DE SISTEMA: $systemInstruction\n\nCONTEXTO ACTUAL: El usuario está en el bloque de "${currentMealSlot?.label ?? 'almuerzo'}". Si no especifica lo contrario, usa este bloque.\n\nMENSAJE DEL USUARIO: $transcription'
+              }
             ]
           }
         ],
         'generationConfig': {
-          'temperature': 0.1, // Determinístico
+          'temperature': 0.1,
           'topP': 0.8,
           'topK': 10,
           'maxOutputTokens': 1024,
@@ -117,64 +179,53 @@ CONOCIMIENTO ACTUAL DE LA APP:
           .post(url, headers: {'Content-Type': 'application/json'}, body: body)
           .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) {
-        debugPrint('❌ Gemini API error ${response.statusCode}: ${response.body}');
-        return null;
-      }
+      if (response.statusCode != 200) return null;
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final candidates = json['candidates'] as List?;
-      if (candidates == null || candidates.isEmpty) return null;
+      final text = json['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+      if (text == null || text.trim().isEmpty) return null;
 
-      final content = candidates[0]['content'] as Map<String, dynamic>?;
-      final parts = content?['parts'] as List?;
-      if (parts == null || parts.isEmpty) return null;
+      final decoded = jsonDecode(text);
+      List<dynamic> items;
 
-      final text = (parts[0]['text'] as String?)?.trim() ?? '';
-      if (text.isEmpty) return null;
-
-      debugPrint('📦 Gemini respuesta: $text');
-
-      // Parsear JSON de respuesta (puede ser un objeto o un array)
-      final parsed = jsonDecode(text);
-      final List<dynamic> items;
-
-      if (parsed is List) {
-        items = parsed;
-      } else if (parsed is Map) {
-        items = [parsed];
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map) {
+        final listKey = decoded.keys.firstWhere(
+          (k) => decoded[k] is List,
+          orElse: () => '',
+        );
+        items = listKey.isNotEmpty ? decoded[listKey] as List : [decoded];
       } else {
-        return null;
+        items = [];
       }
 
-      final results = <ParsedVoiceCommand>[];
+      final List<ParsedVoiceCommand> results = [];
+
       for (final item in items) {
         if (item is! Map) continue;
         final data = item.cast<String, dynamic>();
-
-        final alimento = data['alimento']?.toString().trim();
-        if (alimento == null || alimento.isEmpty) continue;
-
-        final cantidad = (data['cantidad'] as num?)?.toDouble() ?? 100.0;
-        final unidad = data['unidad']?.toString() ?? 'gramos';
-        final comidaStr = data['comida']?.toString().toLowerCase() ?? 'almuerzo';
-
-        final mealSlot = _parseMealSlot(comidaStr);
+        
+        // Mapeo robusto de llaves
+        final double? kcal = (data['kcal'] ?? data['calorias'] ?? data['calories'])?.toDouble();
+        final double? protein = (data['proteina'] ?? data['proteinas'] ?? data['protein'] ?? data['proteins'])?.toDouble();
+        final double? carbs = (data['carbohidratos'] ?? data['carbs'] ?? data['carbohydrates'] ?? data['choc'])?.toDouble();
+        final double? fat = (data['grasa'] ?? data['grasas'] ?? data['fat'] ?? data['fats'])?.toDouble();
 
         results.add(ParsedVoiceCommand(
-          foodName: alimento,
-          amount: cantidad,
-          unit: unidad,
-          mealSlot: mealSlot,
+          foodName: data['alimento'] ?? data['nombre'] ?? 'Alimento desconocido',
+          amount: (data['cantidad'] ?? 100).toDouble(),
+          unit: data['unidad'] ?? 'gramos',
+          mealSlot: _parseMealSlot(data['comida'] ?? data['slot'] ?? 'almuerzo'),
+          kcal: kcal,
+          protein: protein,
+          carbs: carbs,
+          fat: fat,
         ));
       }
-
-      if (results.isEmpty) return null;
-
-      debugPrint('✅ Gemini parseó ${results.length} alimento(s)');
-      return results;
+      return results.isEmpty ? null : results;
     } catch (e) {
-      debugPrint('❌ Error en GeminiNlpService: $e');
+      debugPrint('❌ Error en Gemini backup: $e');
       return null;
     }
   }
@@ -195,13 +246,6 @@ CONOCIMIENTO ACTUAL DE LA APP:
 
       final List<Map<String, dynamic>> contents = [];
       
-      // Añadir instrucciones del sistema como el primer mensaje del "modelo" o un prefijo del usuario
-      // para máxima compatibilidad
-      contents.add({
-        'role': 'user',
-        'parts': [{'text': 'INSTRUCCIONES DE SISTEMA: $systemPrompt\n\nMensaje del usuario a continuación.'}]
-      });
-
       // Añadir historial si existe
       for (final msg in history) {
         contents.add({
@@ -217,6 +261,9 @@ CONOCIMIENTO ACTUAL DE LA APP:
       });
 
       final body = jsonEncode({
+        'system_instruction': {
+          'parts': [{'text': systemPrompt}]
+        },
         'contents': contents,
         'generationConfig': {
           'temperature': 0.7,
@@ -232,7 +279,11 @@ CONOCIMIENTO ACTUAL DE LA APP:
 
       if (response.statusCode != 200) {
         debugPrint('❌ Gemini API Error (${response.statusCode}): ${response.body}');
-        return null;
+        if (_groqApiKey.isNotEmpty) {
+          final groqResp = await _callGroqBackup(userMessage);
+          if (groqResp != null) return groqResp;
+        }
+        return 'En este momento estoy analizando muchos datos. ¡Pero puedo decirte que vas por muy buen camino con tus metas de hoy!';
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -240,8 +291,12 @@ CONOCIMIENTO ACTUAL DE LA APP:
       
       return text?.trim();
     } catch (e) {
-      debugPrint('❌ Error Chat Gemini: $e');
-      return null;
+      debugPrint('❌ Error Chat Gemini (intentando Groq): $e');
+      if (_groqApiKey.isNotEmpty) {
+        final groqResp = await _callGroqBackup(userMessage);
+        if (groqResp != null) return groqResp;
+      }
+      return 'Lo siento, estoy teniendo problemas para conectar con mi cerebro de IA. Pero recuerda: ¡tú puedes con tus metas de hoy!';
     }
   }
 
@@ -278,14 +333,25 @@ CONOCIMIENTO ACTUAL DE LA APP:
 
       final response = await _client
           .post(url, headers: {'Content-Type': 'application/json'}, body: body)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 8));
 
-      if (response.statusCode != 200) return fallback;
+      if (response.statusCode != 200) {
+        if (_groqApiKey.isNotEmpty) {
+          final groqResult = await _callGroqBackup('Traduce de $source a $target: $text', source: source, target: target);
+          if (groqResult != null) return groqResult;
+        }
+        return fallback;
+      }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final translated = json['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
       return (translated?.trim() ?? fallback);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ Error en translate: $e');
+      if (_groqApiKey.isNotEmpty) {
+        final groqResult = await _callGroqBackup('Traduce de $source a $target: $text', source: source, target: target);
+        if (groqResult != null) return groqResult;
+      }
       return fallback;
     }
   }
@@ -346,9 +412,18 @@ ${jsonEncode(texts)}
 
       final response = await _client
           .post(url, headers: {'Content-Type': 'application/json'}, body: body)
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) return texts;
+      if (response.statusCode != 200) {
+        if (_groqApiKey.isNotEmpty) {
+          final groqResult = await _callGroqBackup(prompt, isJson: true);
+          if (groqResult != null) {
+            final List<dynamic> translatedList = jsonDecode(groqResult);
+            return translatedList.map((e) => e.toString()).toList();
+          }
+        }
+        return texts;
+      }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final resultText = json['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
@@ -376,10 +451,17 @@ ${jsonEncode(texts)}
       );
 
       final prompt = '''
-Traduce estos títulos de platos de $source a $target. 
-Para cada plato, genera también una descripción culinaria MUY corta (máximo 12 palabras) que suene profesional y apetitosa.
-Responde ÚNICAMENTE con un array JSON de strings donde cada elemento tenga el formato: "Título traducido | Descripción corta".
-Manten el mismo orden. Sin markdown, solo el JSON.
+Traduce estos nombres de alimentos/platos de $source a español chileno.
+Para cada uno, genera también una descripción gastronómica MUY corta (máximo 12 palabras) que suene profesional y apetitosa.
+
+REGLAS:
+- Los nombres deben sonar naturales en español, como los llamaría un chileno (ej: "Turkey Breast" → "Pechuga de Pavo")
+- NO uses traducciones literales absurdas
+- Si el nombre ya está en español, solo mejora la capitalización
+- Las descripciones deben ser atractivas y breves
+
+Formato: array JSON de strings, cada una: "Nombre en español | Descripción corta"
+Sin markdown, sin explicaciones. Solo el JSON.
 
 Títulos:
 ${jsonEncode(titles)}
@@ -401,16 +483,38 @@ ${jsonEncode(titles)}
 
       final response = await _client
           .post(url, headers: {'Content-Type': 'application/json'}, body: body)
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'];
         debugPrint('🤖 Gemini TranslateBatch Response: $text');
-        final List<dynamic> list = jsonDecode(text);
-        return list.map((e) => e.toString()).toList();
+        final decoded = jsonDecode(text);
+        if (decoded is Map && decoded.containsKey('platos')) {
+          return (decoded['platos'] as List).map((e) => e.toString()).toList();
+        }
+        if (decoded is List) {
+          return decoded.map((e) => e.toString()).toList();
+        }
+        return titles;
       }
+      
       debugPrint('❌ Gemini TranslateBatch failed with status: ${response.statusCode}');
+      
+      if (_groqApiKey.isNotEmpty) {
+        final groqResult = await _callGroqBackup(prompt, isJson: true);
+        if (groqResult != null) {
+          final decoded = jsonDecode(groqResult);
+          if (decoded is Map && decoded.containsKey('platos')) {
+            return (decoded['platos'] as List).map((e) => e.toString()).toList();
+          }
+          if (decoded is List) {
+            return decoded.map((e) => e.toString()).toList();
+          }
+          return titles;
+        }
+      }
+      
       return titles.map((t) => '$t | Una opción nutritiva.').toList();
     } catch (e) {
       debugPrint('Error in translateAndDescribeBatch: $e');
@@ -424,6 +528,7 @@ ${jsonEncode(titles)}
     required double carbsLeft,
     required double fatLeft,
     required String userName,
+    String? timeOfDay,
   }) async {
     if (_apiKey.isEmpty) return null;
 
@@ -432,9 +537,11 @@ ${jsonEncode(titles)}
         'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
       );
 
+      final timeInfo = timeOfDay != null ? 'Es de $timeOfDay.' : '';
+
       final prompt = '''
 Hola Gemini, actúa como un coach nutricional experto para Nutrifoto AI.
-El usuario se llama $userName.
+El usuario se llama $userName. $timeInfo
 Estado actual del día (lo que le FALTA para llegar a su meta):
 - Calorías restantes: ${kcalLeft.round()} kcal
 - Proteína restante: ${proteinLeft.round()} g
@@ -468,17 +575,88 @@ Tu tarea:
         url,
         headers: {'Content-Type': 'application/json'},
         body: body,
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
         return text.trim();
+      } else {
+        debugPrint('❌ Gemini API Error (${response.statusCode}): ${response.body}');
+        // INTENTO 1: Backup con Groq si hay llave
+        if (_groqApiKey.isNotEmpty) {
+          final groqAdvice = await _callGroqBackup(prompt);
+          if (groqAdvice != null) return groqAdvice;
+        }
+        return _getFallbackAdvice(kcalLeft, proteinLeft, carbsLeft, fatLeft);
       }
     } catch (e) {
-      debugPrint('❌ Error generando consejo AI: $e');
+      debugPrint('❌ Error generando consejo AI (intentando Groq/Fallback): $e');
+      if (_groqApiKey.isNotEmpty) {
+        // Podríamos re-generar el prompt aquí si fuera necesario, pero ya está en el scope
+        final groqAdvice = await _callGroqBackup("Dame un consejo nutricional breve para alguien que le faltan ${kcalLeft.round()} kcal.");
+        if (groqAdvice != null) return groqAdvice;
+      }
+      return _getFallbackAdvice(kcalLeft, proteinLeft, carbsLeft, fatLeft);
+    }
+  }
+
+  Future<String?> _callGroqBackup(String prompt, {bool isJson = false, String source = 'auto', String target = 'es'}) async {
+    if (_groqApiKey.isEmpty) return null;
+    try {
+      debugPrint('🚀 Intentando Groq Backup (JSON: $isJson)...');
+      final response = await _client.post(
+        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_groqApiKey',
+        },
+        body: jsonEncode({
+          'model': 'llama-3.3-70b-versatile',
+          'messages': [
+            {
+              'role': 'system', 
+              'content': isJson 
+                ? (prompt.contains('experto en nutrición') ? prompt : 'Eres un traductor técnico. Responde ÚNICAMENTE con el objeto JSON solicitado. No incluyas explicaciones, ni texto introductorio, ni bloques de código. Solo el JSON puro.') 
+                : 'Eres un traductor literal. Tu ÚNICA función es traducir el texto que recibes de $source a $target. No digas "La traducción es:", no des explicaciones, no saludes. Responde exclusivamente con la traducción directa. Si no puedes traducir el término o es un nombre propio, devuélvelo tal cual.'
+            },
+            {'role': 'user', 'content': prompt},
+          ],
+          'max_tokens': isJson ? 1024 : 150,
+          if (isJson) 'response_format': {'type': 'json_object'},
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String result = data['choices'][0]['message']['content'].toString().trim();
+        
+        // Limpieza extra: Quitar frases conversacionales que rompen las búsquedas
+        if (!isJson) {
+          result = result.replaceFirst(RegExp(r'^(la traducción es|the translation is|traducción|result|resultado):\s*', caseSensitive: false), '');
+          // Quitar comillas si el modelo las puso por error
+          if (result.startsWith('"') && result.endsWith('"')) {
+            result = result.substring(1, result.length - 1);
+          }
+        }
+        
+        debugPrint('✅ Groq Backup exitoso: ${result.substring(0, result.length > 30 ? 30 : result.length)}...');
+        return result;
+      } else {
+        debugPrint('❌ Groq API Error (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Falló también el backup de Groq: $e');
     }
     return null;
+  }
+
+  String _getFallbackAdvice(double kcal, double prot, double carbs, double fat) {
+    if (kcal <= 0) return "¡Increíble! Has alcanzado tu meta de hoy. Mantente hidratado y descansa bien.";
+    if (prot > 40) return "Tu cuerpo necesita proteína para recuperarse. ¡Un snack con huevo o pollo sería ideal ahora!";
+    if (carbs > 60) return "Aún tienes espacio para algo de energía. Una fruta o cereales integrales te vendrían bien.";
+    if (kcal > 500) return "Vas por buen camino. Recuerda que la consistencia es la clave del éxito.";
+    return "¡Buen trabajo hoy! Sigue registrando tus comidas para mantener el control.";
   }
 
   /// Genera instrucciones de preparación cortas para un alimento.
@@ -538,12 +716,20 @@ class ParsedVoiceCommand {
   final double amount;
   final String unit;
   final MealSlot mealSlot;
+  final double? kcal;
+  final double? protein;
+  final double? carbs;
+  final double? fat;
 
   const ParsedVoiceCommand({
     required this.foodName,
     required this.amount,
     required this.unit,
     required this.mealSlot,
+    this.kcal,
+    this.protein,
+    this.carbs,
+    this.fat,
   });
 
   /// Convierte la cantidad a gramos para normalizar las porciones.

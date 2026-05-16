@@ -1,5 +1,6 @@
-import 'dart:io' show Directory;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Directory, File;
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/repositories/tracking_repository.dart';
 import '../infrastructure/repositories/shared_prefs_tracking_repository.dart';
@@ -48,7 +49,9 @@ class AppBootstrap {
         defaultValue: 'http://10.0.2.2:8000',
       ),
       geminiApiKey:
-          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'AIzaSyBlEOFgEk9y35CzF9mPu0PWTBCWP_bH1WM'),
+          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'AIzaSyDfzEiD7bPjGhDDtVXthv5wD1L3PWUT0Zs'),
+      groqApiKey:
+          const String.fromEnvironment('GROQ_API_KEY', defaultValue: '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'),
       edamamAppId:
           const String.fromEnvironment('EDAMAM_APP_ID', defaultValue: '4141d0d4'),
       edamamAppKey:
@@ -67,7 +70,21 @@ class AppBootstrap {
     if (kIsWeb) {
       trackingRepository = SharedPrefsTrackingRepository(prefs);
     } else {
-      final storagePath = '${Directory.systemTemp.path}/nutrifoto_tracking.json';
+      final docsDir = await getApplicationDocumentsDirectory();
+      final storagePath = '${docsDir.path}/nutrifoto_tracking.json';
+      
+      // Intentar migrar datos desde temp si existen (opcional pero amable)
+      final tempFile = File('${Directory.systemTemp.path}/nutrifoto_tracking.json');
+      final persistentFile = File(storagePath);
+      
+      bool shouldMigrate = await tempFile.exists() && 
+          (!await persistentFile.exists() || (await persistentFile.length() < 5));
+
+      if (shouldMigrate) {
+        debugPrint('📦 Migrando datos desde carpeta temporal...');
+        await tempFile.copy(storagePath);
+      }
+      
       trackingRepository = JsonTrackingRepository(filePath: storagePath);
     }
 
@@ -81,6 +98,7 @@ class AppBootstrap {
     // Inicializar servicio de NLP con Gemini
     final geminiNlpService = GeminiNlpService(
       apiKey: config.geminiApiKey,
+      groqApiKey: config.groqApiKey,
     );
 
     // Inicializar servicio de autenticación y restaurar sesión
@@ -105,6 +123,7 @@ class AppBootstrap {
       geminiNlpService: geminiNlpService,
       authService: authService,
       registrationTracker: registrationTracker,
+      searchCache: orchestrator.searchCache,
     );
   }
 

@@ -1,78 +1,91 @@
 <p align="center">
-  <img src="assets/images/logo_cat_strawberry.png" alt="Nutrifoto AI" width="120"/>
+  <img src="assets/images/logo_cat_strawberry.png" alt="Nutrifoto AI" width="140"/>
 </p>
 
-<h1 align="center">🍎 Nutrifoto AI</h1>
+<h1 align="center">Nutrifoto AI</h1>
 
 <p align="center">
-  <strong>Nutrifoto AI: Visión Artificial y Nutrición Inteligente</strong><br>
-  <em>He desarrollado este ecosistema integral para demostrar el potencial de la visión artificial aplicada a la salud, integrando modelos YOLO con LLMs de última generación.</em>
+  <strong>Computer Vision × Nutrición Inteligente</strong><br>
+  <sub>Detección de alimentos on-device con YOLO26, coaching nutricional con Gemini y un motor de descubrimiento de recetas multi-fuente — todo en una app móvil con UI Glassmorphism premium.</sub>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.11+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"/>
-  <img src="https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart"/>
-  <img src="https://img.shields.io/badge/YOLO26-TFLite-00D084?style=for-the-badge&logo=tensorflow&logoColor=white" alt="YOLO26"/>
-  <img src="https://img.shields.io/badge/Google%20Gemini-NLP-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"/>
-  <img src="https://img.shields.io/badge/OpenFoodFacts-API-F68B1F?style=for-the-badge&logo=openfoodfacts&logoColor=white" alt="OpenFoodFacts"/>
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/Dart-3.11-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart"/>
+  <img src="https://img.shields.io/badge/YOLO26-Custom%20Model-FF6F00?style=for-the-badge&logo=pytorch&logoColor=white" alt="YOLO26"/>
+  <img src="https://img.shields.io/badge/Gemini-3.1%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"/>
+  <img src="https://img.shields.io/badge/Groq-Llama%203.3-F68B1F?style=for-the-badge&logo=meta&logoColor=white" alt="Groq"/>
+  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License"/>
+</p>
+
+<p align="center">
+  <a href="#-pruébala-ahora"><strong>Probar »</strong></a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#-descripción"><strong>Descripción »</strong></a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#-arquitectura"><strong>Arquitectura »</strong></a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#-data-science--entrenamiento"><strong>Data Science »</strong></a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#-instalación"><strong>Instalación »</strong></a>
 </p>
 
 ---
 
-## 🚀 ¡Pruébala ahora!
+## 📱 Pruébala Ahora
 
-Si eres reclutador o quieres ver la app en acción rápidamente sin configurar el entorno de desarrollo:
+> **¿Eres reclutador?** Prueba la app en 30 segundos sin configurar nada:
 
-- **📱 Android**: Descarga el archivo de instalación directo desde la sección de [**Releases**](https://github.com/Paimilla/nutrifoto/releases) (APK).
-- **🎬 Video Walkthrough**: Mira nuestra [**Demo dinámica de 60 segundos**](#-guion-de-la-demo-walkthrough) para ver todas las funciones principales.
-- **🌐 Web Live Demo**: [**Pruébala aquí**](https://Paimilla.github.io/nutrifoto) (Experiencia fluida y nativa en el navegador).
-- **📱 Appetize Preview**: Si prefieres ver el entorno Android real, haz clic [**aquí**](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) (Puede ser lento al iniciar).
+| Canal | Enlace |
+| :--- | :--- |
+| 📦 **APK Directo** | [Descargar última release](https://github.com/Paimilla/nutrifoto/releases) |
+| 🌐 **Appetize.io** | [Abrir en navegador](https://appetize.io/app/b_ulosmqy3whd5cq2oxhsglddmay) (emulador Android real) |
+| 🎬 **Demo 60s** | [Ver walkthrough](#-demo--walkthrough) |
 
 ---
 
 ## 📖 Descripción
 
-**Nutrifoto AI** es la culminación de mi trabajo integrando **Computer Vision** y desarrollo móvil moderno. Diseñé y entrené un modelo **YOLO26** utilizando un dataset propio curado de alimentos, permitiendo una detección on-device precisa y fluida. 
+**Nutrifoto AI** es un ecosistema integral que demuestra el potencial de la **visión artificial aplicada a la salud**. Diseñé y entrené un modelo **YOLO26** con un dataset propio curado de **30 clases de comida chilena**, permitiendo detección on-device precisa y fluida.
 
-La aplicación no solo identifica comida; actúa como un asistente inteligente gracias a **Google Gemini**, ofreciendo coaching nutricional dinámico, análisis de macros y una experiencia visual premium con gráficos interactivos.
+La app no solo identifica comida — actúa como un **asistente nutricional completo** gracias a la integración de múltiples modelos de IA:
 
-### 🎥 Demo & Visuals
+```
+📸 Foto → 🧠 YOLO26 → 🍗 "Pollo asado" → 📊 250 kcal / 31g prot → ✅ Registrado
+```
 
-<p align="center">
-  <img src="assets/docs/training/app_demo.gif" alt="App Demo GIF" width="280"/>
-  <img src="assets/docs/training/feature_showcase.gif" alt="Features GIF" width="280"/>
-</p>
+### 🌟 ¿Por qué destaca este proyecto?
 
-> [!TIP]
-> **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtube.com/tuvideo).
-
-<details>
-<summary>🎞️ Ver Guion de la Demo (Walkthrough)</summary>
-
-| Fase | Duración | Funcionalidad Clave |
-| :--- | :--- | :--- |
-| **Intro** | 00-10s | Splash screen y Dashboard principal (Glassmorphism UI). |
-| **IA Vision** | 10-25s | Escaneo en tiempo real con **YOLO26**. Detección múltiple de alimentos. |
-| **Barcode** | 25-35s | Escaneo de productos con integración **OpenFoodFacts**. |
-| **Voice AI** | 35-50s | Registro por voz procesado por **Gemini AI** (NLP). |
-| **Analytics** | 50-60s | Dashboard interactivo con `fl_chart` y gestión de metas. |
-
-</details>
-
-### 🌟 Por qué destaca este proyecto
-
-| Problema | Solución |
-|---|---|
-| Registrar comida es tedioso y lento | 📸 **Camera-First**: una foto = registro completo |
-| Las apps de nutrición solo conocen comida anglosajona | 🇨🇱 **30 clases de comida chilena** entrenadas con YOLO26 |
-| No hay contexto sobre lo que comes | 🤖 **Gemini NLP** parsea comandos de voz naturales |
-| El modelo puede fallar sin internet | 🧠 **Motor híbrido**: YOLO26 on-device + fallback de colores |
+| Problema Real | Solución Técnica |
+| :--- | :--- |
+| Registrar comida es tedioso y lento | 📸 **Camera-First**: una foto = registro completo con macros |
+| Las apps solo conocen comida anglosajona | 🇨🇱 **30 clases chilenas** entrenadas con dataset propio en YOLO26 |
+| No hay contexto nutricional personalizado | 🤖 **Gemini + Groq**: coaching dinámico basado en macros restantes |
+| Los modelos fallan sin internet | 🧠 **Motor híbrido**: YOLO26 on-device + fallback de análisis cromático |
 | Los scanners de barras no muestran macros | 📦 **OpenFoodFacts** integrado con datos nutricionales completos |
+| Las recetas vienen de una sola fuente | 🔀 **Cascade multi-API**: Edamam + Spoonacular + OpenFoodFacts + DB local |
 
 ---
 
-## ✨ Características
+## 🎥 Demo & Walkthrough
+
+<p align="center">
+  <img src="assets/docs/training/app_demo.gif" alt="App Demo" width="280"/>
+  <img src="assets/docs/training/feature_showcase.gif" alt="Features" width="280"/>
+</p>
+
+<details>
+<summary><strong>🎞️ Guion de la Demo (60 segundos)</strong></summary>
+
+| Fase | Tiempo | Funcionalidad |
+| :--- | :--- | :--- |
+| **Intro** | 00–10s | Splash screen → Dashboard principal con UI Glassmorphism |
+| **IA Vision** | 10–25s | Escaneo en tiempo real con **YOLO26** · Detección múltiple |
+| **Barcode** | 25–35s | Escaneo de productos vía **OpenFoodFacts** |
+| **Voice AI** | 35–50s | Registro por voz procesado por **Groq** (NLP) |
+| **Analytics** | 50–60s | Dashboard interactivo con `fl_chart` · Gestión de metas |
+
+</details>
+
+---
+
+## ✨ Características Principales
 
 ### 🎯 Motor de Visión Híbrido
 
@@ -81,121 +94,77 @@ Imagen capturada
     ├── [1] YOLO26 TFLite (best_float16.tflite)
     │       ├── Center-square crop (640×640)
     │       ├── Normalización float32 NHWC
-    │       ├── Inferencia on-device (4 threads)
-    │       └── Non-Maximum Suppression (NMS)
+    │       ├── Inferencia on-device (4 threads CPU)
+    │       └── Non-Maximum Suppression (IoU 0.45)
     │
-    └── [2] Fallback: Análisis de colores (cosine similarity)
-            ├── Perfil cromático (brown/green/white/yellow/orange/red)
+    └── [2] Fallback: Análisis cromático (cosine similarity)
+            ├── Perfil de colores (brown/green/white/yellow/orange/red)
             └── Matching contra 13 templates de comida
 ```
 
-- **YOLO26 float16** entrenado con 30 clases de comida chilena
-- **Center-square crop** que maximiza resolución en el centro del plato
-- **Detección múltiple**: identifica varios alimentos en una foto (ej: "Pollo y Papas fritas")
-- **NMS nativo** con IoU threshold de 0.45 para eliminar detecciones duplicadas
+- **YOLO26 float16** — modelo custom con 30 clases de comida chilena
+- **Center-square crop** — maximiza resolución en el centro del plato
+- **Detección múltiple** — identifica varios alimentos en una sola foto
+- **~120ms inferencia** en CPU (Google Pixel 7)
 
----
+### 🍳 Motor de Descubrimiento de Recetas
 
-## 🧠 Data Science & Entrenamiento
+Sistema de búsqueda inteligente con **6 fuentes de datos** y deduplicación automática:
 
-Para lograr la precisión necesaria en platos locales, no utilizamos modelos genéricos. Todo el pipeline de datos fue construido desde cero.
+```
+Búsqueda "cazuela"
+    ├── [1] 🇨🇱 Base local chilena (44 alimentos con imágenes curadas)
+    ├── [2] 🔍 SmartRecipeSearch (expansión de sinónimos/categorías)
+    ├── [3] 🥄 Spoonacular API (recetas con fotos reales)
+    ├── [4] 🥗 Edamam Food DB (precisión nutricional profesional)
+    ├── [5] 🌐 OpenFoodFacts (datos abiertos, sin límite)
+    └── [6] 🤖 Gemini AI (instrucciones generadas por IA)
+         └── Deduplicación por nombre → Traducción batch → Caché en memoria
+```
 
-### 📓 Notebook de Entrenamiento
-Para replicar el entrenamiento o ajustar el modelo, se incluye el notebook:
-[`assets/models/YOLO26_ComidaChilena.ipynb`](assets/models/YOLO26_ComidaChilena.ipynb)
+**Características del motor:**
+- **CascadeRecipeProvider** — combina resultados de múltiples APIs (no se detiene en la primera)
+- **Caché de objetos completos** — resultados cacheados conservan toda la data nutricional e imágenes
+- **Traducción inteligente** — solo traduce items de APIs en inglés; items locales chilenos se preservan intactos
+- **Filtro de calidad** — descarta resultados genéricos (agua, sal, especias) automáticamente
+- **Dificultad y tiempo dinámicos** — estimados por complejidad calórica, no hardcodeados
 
-Este notebook detalla:
-- Descarga del dataset desde Roboflow (`Comida-Chilena-7`).
-- Configuración de hiperparámetros (Epochs: 100, Optimizer: auto, Mixup: 0.1).
-- Proceso de exportación a formatos ONNX y TFLite.
-
-### 📊 Curación y Aumentación (Roboflow)
-El pipeline de datos se gestionó íntegramente con **Roboflow**, permitiendo una curación precisa y la generación de aumentaciones para mejorar la generalización del modelo.
-
-<p align="center">
-  <img src="assets/docs/training/roboflow_labeling.png" alt="Etiquetado en Roboflow" width="600"/><br>
-  <em>Interfaz de etiquetado manual y estadísticas de distribución de clases en Roboflow.</em>
-</p>
-
-- **Aumentación de Datos**: Se aplicaron técnicas de rotación, cambios de brillo, ruido y mosaico para fortalecer la detección en condiciones de luz variables.
-- **Dataset**: `Comida-Chilena-7` (versión 7), optimizado para exportación YOLO26.
-
-### 📈 Métricas de Entrenamiento (YOLO26)
-El modelo fue entrenado durante 100 epochs utilizando el notebook incluido, logrando una convergencia sólida en las métricas de detección.
-
-<p align="center">
-  <img src="assets/docs/training/dataset_augmentation.png" alt="Gráficas de Entrenamiento" width="700"/>
-  <img src="assets/docs/training/dataset_statistics.png" alt="Resumen de Métricas" width="300"/><br>
-  <em>Curvas de Loss (Box, Cls, DFL) y resumen de precisión mAP@50 durante el entrenamiento.</em>
-</p>
-
-### 🚀 Resultados de Inferencia
-Validación del modelo final sobre imágenes reales y análisis de precisión por categoría.
-
-<p align="center">
-  <img src="assets/docs/training/training_metrics.png" alt="Detección de Naranjas" width="600"/><br>
-  <em>Prueba de inferencia: Detección múltiple de naranjas con altos niveles de confianza.</em>
-</p>
-
-<p align="center">
-  <img src="assets/docs/training/training_results.png" alt="Precisión por Clase" width="700"/><br>
-  <em>Resultados de precisión (mAP) desglosados por cada una de las 30 clases de comida.</em>
-</p>
-
-- **mAP@0.5**: 0.89
-- **Inferencia (CPU)**: ~120ms (Google Pixel 7)
-- **Tamaño del Modelo**: 42MB (TFLite float16)
-
-### 📸 Interfaz Camera-First
-
-La cámara ocupa el **85% de la pantalla**, con una barra inferior de 5 accesos rápidos:
-
-| Tab | Función | Tecnología |
-|-----|---------|------------|
-| 📸 Escanear | Captura de comida + código de barras | Camera + MobileScanner |
-| 📋 Recetas | Búsqueda de recetas por ingrediente | Edamam API |
-| 🔍 Buscar | Búsqueda textual de alimentos | USDA FoodData Central |
-| 📝 Lista | Entrada manual de alimentos | Formulario con macros |
-| 🎤 Voz | Registro por voz con IA | Speech-to-Text + Gemini |
-
-### 🎤 Parser de Voz con Google Gemini
+### 🎤 Parser de Voz con Dual AI
 
 El usuario puede decir frases naturales como:
 - *"Agréguame 150 gramos de pechuga de pollo al almuerzo"*
 - *"Desayuné dos huevos fritos con pan"*
 - *"Una manzana de snack"*
 
-Gemini actúa como un **extractor determinístico de entidades alimenticias** que devuelve JSON estructurado:
+**Groq (Llama 3.3 70B)** como motor primario por su latencia ultra-baja, con **Gemini 3.1 Flash** como fallback de alta precisión:
 
 ```json
-{
-  "alimento": "pechuga de pollo",
-  "cantidad": 150,
-  "unidad": "gramos",
-  "comida": "almuerzo"
-}
+[
+  { "alimento": "huevos fritos", "cantidad": 2, "unidad": "unidades", "comida": "desayuno" },
+  { "alimento": "pan", "cantidad": 1, "unidad": "unidades", "comida": "desayuno" }
+]
 ```
 
 ### 🖐️ Drag & Drop con Feedback Háptico
 
-- **LongPressDraggable**: mantener presionado un alimento para arrastrarlo entre bloques del día
-- **DragTarget**: cada sección de comida (Desayuno, Almuerzo, etc.) acepta drops
-- **Haptic Feedback**: vibraciones en 3 niveles (lightImpact, selectionClick, heavyImpact)
-- **Undo con SnackBar**: 5 segundos para deshacer cualquier eliminación o movimiento
+- **LongPressDraggable** — mantener presionado para arrastrar entre bloques del día
+- **DragTarget** — cada sección (Desayuno, Almuerzo, Once, Cena, Snack) acepta drops
+- **Haptic Feedback** — vibraciones en 3 niveles (`light`, `selection`, `heavy`)
+- **Undo con SnackBar** — 5 segundos para deshacer cualquier acción
 
-### 🧠 AI Smart Coach & Sugerencias
+### 🧠 AI Smart Coach
 
-Sistema de coaching proactivo que utiliza **Gemini 1.5 Flash**:
-- **Consejos Contextuales**: Analiza los macros restantes del usuario y sugiere qué comer.
-- **Generación de Recetas**: Crea instrucciones culinarias profesionales para cualquier alimento detectado.
-- **Descripciones Gastronómicas**: Genera reseñas apetitosas para los resultados de búsqueda global.
+Sistema de coaching proactivo con **Gemini 3.1 Flash**:
+- **Consejos contextuales** — analiza macros restantes y sugiere qué comer
+- **Instrucciones culinarias** — genera pasos de preparación profesionales contextuales
+- **Descripciones gastronómicas** — reseñas apetitosas para resultados de búsqueda
 
-### 📊 Visualización de Datos Avanzada
+### 📊 Visualización de Datos
 
-Migración completa a **fl_chart** para dashboards interactivos:
-- **Gráficos de Líneas**: Seguimiento calórico semanal/mensual con tooltips táctiles.
-- **Gráficos de Anillo (Pie)**: Distribución de macronutrientes (Prot/Carb/Gras) con diseño Glassmorphism.
-- **Feedback Visual**: Colores dinámicos según el estado de las metas nutricionales.
+Dashboard interactivo con **fl_chart**:
+- **Gráficos de líneas** — seguimiento calórico semanal/mensual con tooltips táctiles
+- **Gráficos de anillo** — distribución de macronutrientes con diseño Glassmorphism
+- **Colores dinámicos** — feedback visual según el estado de las metas
 
 ---
 
@@ -207,7 +176,7 @@ El proyecto sigue una **arquitectura por capas** inspirada en Clean Architecture
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                          │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
-│  │HomeScreen│ │PlanScreen│ │VoiceScreen│ │Scanner   │  ...     │
+│  │HomeScreen│ │PlanScreen│ │VoiceScreen│ │ Scanner  │  ...     │
 │  └─────┬────┘ └─────┬────┘ └─────┬─────┘ └─────┬────┘         │
 │        │            │            │              │               │
 │  ┌─────┴────────────┴────────────┴──────────────┴─────────┐    │
@@ -232,28 +201,137 @@ El proyecto sigue una **arquitectura por capas** inspirada en Clean Architecture
 │  │Provider    │ │Facts       │ │Provider    │ │Provider    │ │
 │  │(TFLite)    │ │Provider    │ │            │ │            │ │
 │  └────────────┘ └────────────┘ └────────────┘ └────────────┘ │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐                │
-│  │Spoonacular │ │LibreTrans  │ │JSON Track  │                │
-│  │Provider    │ │late Service│ │Repository  │                │
-│  └────────────┘ └────────────┘ └────────────┘                │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ │
+│  │Spoonacular │ │Groq Cloud  │ │Local Chile │ │Smart Recipe│ │
+│  │Provider    │ │(Llama 3.3) │ │Search      │ │Search      │ │
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 ### Stack Técnico
 
 | Capa | Tecnología | Propósito |
-|------|-----------|-----------|
-| **UI** | Flutter 3.11+ / Material 3 | Framework cross-platform |
-| **Tipografía** | Google Fonts (Manrope) | Diseño premium y legible |
-| **IA On-Device** | TFLite Flutter + YOLO26 | Detección de comida sin internet |
-| **NLP / Coach** | Google Gemini API (Flash) | Parsing de voz y coaching inteligente |
-| **Estadísticas** | fl_chart | Gráficos interactivos y analíticas |
+| :--- | :--- | :--- |
+| **UI** | Flutter 3.11 · Material 3 · Glassmorphism | Framework cross-platform con diseño premium |
+| **Tipografía** | Google Fonts (Manrope) | Legibilidad y estética moderna |
+| **IA On-Device** | TFLite + YOLO26 Custom | Detección de comida sin internet |
+| **NLP / Coach** | Groq (Llama 3.3 70B) · Gemini 3.1 Flash | Parsing de voz y coaching inteligente |
+| **Gráficos** | fl_chart | Dashboards interactivos con tooltips |
 | **Barcode** | mobile_scanner + OpenFoodFacts | Escaneo y datos de productos |
-| **Nutrición** | USDA FoodData Central + Edamam | Base de datos nutricional |
-| **Recetas** | Edamam + Gemini AI Fallback | Sugerencias e instrucciones generadas |
-| **Voz** | speech_to_text | Transcripción de voz a texto |
-| **Persistencia** | JSON / Shared Preferences | Almacenamiento local del diario |
-| **Traducciones** | Gemini / LibreTranslate | ES ↔ EN para interoperabilidad de APIs |
+| **Nutrición** | USDA FoodData · Edamam · OpenFoodFacts | Bases de datos nutricionales multi-fuente |
+| **Recetas** | CascadeRecipeProvider (4 APIs) | Búsqueda inteligente con deduplicación |
+| **Traducción** | Gemini 3.1 Flash (batch) | ES ↔ EN con prompts chilenos contextuales |
+| **Persistencia** | JSON Tracking Repository | Almacenamiento local del diario |
+
+---
+
+## 🧠 Data Science & Entrenamiento
+
+Para lograr precisión en platos locales, no usé modelos genéricos. Todo el pipeline de datos fue construido desde cero.
+
+### 📓 Notebook de Entrenamiento
+
+Para replicar el entrenamiento o ajustar el modelo:
+[`assets/models/YOLO26_ComidaChilena.ipynb`](assets/models/YOLO26_ComidaChilena.ipynb)
+
+Este notebook documenta:
+- Descarga del dataset desde Roboflow (`Comida-Chilena-7`)
+- Configuración de hiperparámetros (Epochs: 100, Optimizer: auto, Mixup: 0.1)
+- Exportación a formatos ONNX y TFLite (float16)
+
+### 📊 Curación y Aumentación
+
+El pipeline de datos se gestionó con **Roboflow**, con curación manual y aumentación para mejorar la generalización:
+
+<p align="center">
+  <img src="assets/docs/training/roboflow_labeling.png" alt="Etiquetado en Roboflow" width="700"/><br>
+  <em>Interfaz de etiquetado manual y distribución de clases en Roboflow.</em>
+</p>
+
+- **Aumentación**: Rotación, brillo, ruido, mosaico → robustez en condiciones variables
+- **Dataset**: `Comida-Chilena-7` (versión 7), optimizado para YOLO26
+
+### 📈 Métricas de Entrenamiento
+
+100 epochs de entrenamiento con convergencia sólida:
+
+<p align="center">
+  <img src="assets/docs/training/dataset_augmentation.png" alt="Curvas de Entrenamiento" width="700"/>
+  <img src="assets/docs/training/dataset_statistics.png" alt="Estadísticas" width="300"/><br>
+  <em>Curvas de Loss (Box, Cls, DFL) y resumen de precisión mAP@50.</em>
+</p>
+
+### 🎯 Resultados de Inferencia
+
+<p align="center">
+  <img src="assets/docs/training/training_metrics.png" alt="Detección en acción" width="600"/><br>
+  <em>Detección múltiple con altos niveles de confianza.</em>
+</p>
+
+<p align="center">
+  <img src="assets/docs/training/training_results.png" alt="Precisión por clase" width="700"/><br>
+  <em>Precisión mAP desglosada por cada una de las 30 clases.</em>
+</p>
+
+| Métrica | Valor |
+| :--- | :--- |
+| **mAP@0.5** | 0.89 |
+| **Inferencia (CPU)** | ~120ms (Pixel 7) |
+| **Tamaño del modelo** | 42 MB (TFLite float16) |
+| **Clases** | 30 comidas chilenas |
+
+---
+
+## 🇨🇱 Clases Detectadas (30)
+
+<table>
+<tr><td>
+
+| # | Clase |
+|---|-------|
+| 1 | Arroz |
+| 2 | Arvejas |
+| 3 | Brócoli |
+| 4 | Calzones rotos |
+| 5 | Carne |
+| 6 | Cazuela |
+| 7 | Charquicán |
+| 8 | Choripán |
+| 9 | Completos |
+| 10 | Durazno |
+
+</td><td>
+
+| # | Clase |
+|---|-------|
+| 11 | Empanada |
+| 12 | Ensalada chilena |
+| 13 | Huevos fritos |
+| 14 | Humitas |
+| 15 | Manzana |
+| 16 | Mote con huesillo |
+| 17 | Naranja |
+| 18 | Palomitas |
+| 19 | Palta |
+| 20 | Papas fritas |
+
+</td><td>
+
+| # | Clase |
+|---|-------|
+| 21 | Pasta |
+| 22 | Pastel de choclo |
+| 23 | Pescado frito |
+| 24 | Pizza |
+| 25 | Plátano |
+| 26 | Pollo |
+| 27 | Porotos con riendas |
+| 28 | Salmón |
+| 29 | Sopaipillas |
+| 30 | Tiramisú |
+
+</td></tr>
+</table>
 
 ---
 
@@ -261,146 +339,120 @@ El proyecto sigue una **arquitectura por capas** inspirada en Clean Architecture
 
 ```
 lib/
-├── main.dart                         # Entry point
-├── application/                      # Casos de uso y orquestación
-│   ├── app_bootstrap.dart            # Inicialización de servicios
-│   ├── app_routes.dart               # Definición de rutas
-│   ├── app_services.dart             # Service Locator central
-│   ├── feature_flags.dart            # Feature toggles
-│   ├── food_orchestrator.dart        # Orquestador de fuentes de datos
-│   ├── orchestrator_factory.dart     # Factory del orquestador
+├── main.dart                              # Entry point + tema Glassmorphism
+├── application/                           # Orquestación y casos de uso
+│   ├── app_bootstrap.dart                 # Inicialización de servicios
+│   ├── app_services.dart                  # Service Locator central
+│   ├── food_orchestrator.dart             # 🧠 Orquestador de fuentes de datos
+│   ├── orchestrator_factory.dart          # Factory con inyección de providers
 │   └── usecases/
-│       ├── tracking_usecases.dart    # CRUD de entradas del diario
-│       ├── history_usecases.dart     # Consultas de historial
-│       └── insights_usecases.dart    # Insights y análisis
-├── domain/                           # Modelos puros (sin dependencias)
+│       ├── tracking_usecases.dart         # CRUD del diario alimenticio
+│       ├── history_usecases.dart          # Consultas de historial
+│       └── insights_usecases.dart         # Análisis e insights nutricionales
+├── domain/                                # Modelos puros (sin dependencias)
 │   ├── models/
-│   │   ├── nutrition_models.dart     # FoodItem, NutritionInfo
-│   │   └── tracking_models.dart      # DiaryEntry, DailySummary
+│   │   ├── nutrition_models.dart          # FoodItem, Nutrition, Portion
+│   │   └── tracking_models.dart           # DiaryEntry, DailySummary, MealSlot
 │   └── repositories/
-│       ├── food_provider.dart        # Interfaz de búsqueda de comida
-│       └── tracking_repository.dart  # Interfaz de persistencia
-├── infrastructure/                   # Implementaciones concretas
+│       ├── food_provider.dart             # Interfaces: Search, Recipe, Vision, Translation
+│       └── tracking_repository.dart       # Interfaz de persistencia
+├── infrastructure/                        # Implementaciones concretas
 │   ├── providers/
-│   │   ├── onnx_vision_provider.dart # YOLO26 TFLite + Color fallback
-│   │   ├── openfoodfacts_provider.dart
-│   │   ├── openfoodfacts_search_provider.dart
-│   │   ├── edamam_provider.dart
-│   │   ├── edamam_recipe_provider.dart
-│   │   ├── usda_provider.dart
-│   │   ├── spoonacular_provider.dart
-│   │   ├── cascade_provider.dart     # Fallback encadenado de providers
-│   │   └── local_chile_provider.dart
+│   │   ├── onnx_vision_provider.dart      # YOLO26 TFLite + Color fallback
+│   │   ├── cascade_provider.dart          # Multi-source merge con deduplicación
+│   │   ├── edamam_recipe_provider.dart    # Edamam Food DB (con filtro de calidad)
+│   │   ├── spoonacular_provider.dart      # Spoonacular (recetas con fotos)
+│   │   ├── openfoodfacts_provider.dart    # Barcode lookup
+│   │   ├── openfoodfacts_search_provider.dart  # Búsqueda textual gratuita
+│   │   ├── usda_provider.dart             # USDA FoodData Central
+│   │   └── local_chile_provider.dart      # 44 alimentos chilenos offline
 │   ├── repositories/
-│   │   └── json_tracking_repository.dart
+│   │   └── json_tracking_repository.dart  # Persistencia JSON local
 │   └── services/
-│       ├── api_config.dart           # Configuración de API keys
-│       ├── auth_service.dart         # Google Sign-In + guest
-│       ├── gemini_nlp_service.dart   # Parser NLP con Gemini
-│       ├── hydration_reminder_service.dart
-│       ├── libretranslate_service.dart
-│       ├── network_policy.dart
-│       └── registration_tracker.dart
-└── presentation/                     # UI
+│       ├── gemini_nlp_service.dart         # 🤖 NLP + Traducción + Coaching (Groq/Gemini)
+│       ├── smart_recipe_search_service.dart # Expansión de sinónimos chilenos
+│       ├── local_chile_search_service.dart  # DB local con imágenes curadas
+│       ├── search_cache_service.dart        # Caché de traducciones y búsquedas
+│       ├── auth_service.dart               # Google Sign-In + modo guest
+│       └── api_config.dart                 # Centralización de API keys
+└── presentation/                           # UI premium
     ├── screens/
-    │   ├── home_screen.dart          # Dashboard principal (Hoy)
-    │   ├── plan_screen.dart          # Drag & Drop de comidas
-    │   ├── scanner_camera_screen.dart # Camera-First AI scanner
-    │   ├── scanner_barcode_screen.dart # Escáner de barras
-    │   ├── voice_screen.dart         # Registro por voz + Gemini
-    │   ├── search_screen.dart        # Búsqueda textual
-    │   ├── recipes_screen.dart       # Búsqueda de recetas
-    │   ├── manual_entry_screen.dart  # Entrada manual
-    │   ├── statistics_screen.dart    # Estadísticas y gráficos
-    │   ├── history_screen.dart       # Historial de entradas
-    │   ├── settings_screen.dart      # Configuración y perfil
-    │   ├── achievements_screen.dart  # Logros gamificados
-    │   ├── hydration_screen.dart     # Seguimiento de hidratación
-    │   ├── assistant_screen.dart     # Asistente IA
-    │   ├── welcome_screen.dart       # Pantalla de bienvenida
-    │   ├── signup_screen.dart        # Registro / Login
-    │   ├── onboarding_screen.dart    # Onboarding de usuario
-    │   └── add_food_hub_screen.dart  # Hub de métodos de registro
+    │   ├── home_screen.dart               # Dashboard principal (Hoy)
+    │   ├── plan_screen.dart               # Planificación + Drag & Drop
+    │   ├── recipes_screen.dart            # 🍳 Descubrimiento de recetas magazine-style
+    │   ├── scanner_camera_screen.dart     # AI Hub (Scanner, Voz, Recetas, Manual)
+    │   ├── statistics_screen.dart         # Estadísticas interactivas (fl_chart)
+    │   ├── assistant_screen.dart          # Chat con Asistente IA
+    │   └── ...                            # Welcome, Signup, Onboarding, Settings
     └── widgets/
-        ├── nutrifoto_ui.dart         # Design system (colores, tokens)
-        ├── app_bottom_nav.dart       # Barra de navegación inferior
-        ├── draggable_food_card.dart  # Tarjeta arrastrable con menú
-        ├── swipeable_food_card.dart  # Tarjeta con swipe actions
-        ├── animated_screen_body.dart # Wrapper de animaciones
-        ├── animation_utilities.dart  # Utilidades de animación
-        ├── skeleton_loader.dart      # Loading skeletons
-        ├── feedback_widgets.dart     # Widgets de feedback
-        ├── smart_substitution_sheet.dart # Sheet de sustituciones
-        └── app_notifier.dart         # Notificaciones in-app
+        ├── nutrifoto_ui.dart              # 🎨 Design system (Glassmorphism tokens)
+        ├── draggable_food_card.dart        # Tarjeta arrastrable con menú contextual
+        ├── swipeable_food_card.dart        # Tarjeta con swipe-to-delete
+        ├── skeleton_loader.dart           # Loading skeletons animados
+        └── ...                            # Bottom nav, animaciones, feedback
 ```
 
 ---
 
-## 🚀 Instalación y Configuración
+## 🚀 Instalación
 
 ### Prerrequisitos
 
 - **Flutter SDK** 3.11+
-- **Dart SDK** 3.x
+- **Dart SDK** 3.11+
 - **Android Studio** o **VS Code** con extensión Flutter
-- Dispositivo Android/iOS o emulador
+- Dispositivo Android o emulador
 
-### 1. Clonar el Repositorio
-
-```bash
-git clone https://github.com/tu-usuario/nutrifoto-ai.git
-cd nutrifoto-ai
-```
-
-### 2. Instalar Dependencias
+### 1. Clonar e instalar
 
 ```bash
+git clone https://github.com/Paimilla/nutrifoto.git
+cd nutrifoto
 flutter pub get
 ```
 
-### 3. Configurar API Keys
+### 2. Configurar API Keys
 
-La app usa variables de entorno en tiempo de compilación (`--dart-define`). Copia el script de ejemplo y reemplaza los valores:
+La app usa variables de entorno en tiempo de compilación (`--dart-define`):
+
+```bash
+flutter run \
+  --dart-define=GEMINI_API_KEY=tu_clave_gemini \
+  --dart-define=GROQ_API_KEY=tu_clave_groq \
+  --dart-define=EDAMAM_APP_ID=tu_app_id \
+  --dart-define=EDAMAM_APP_KEY=tu_app_key
+```
+
+**O con el script PowerShell:**
 
 ```powershell
-# PowerShell (Windows)
 Copy-Item run.example.ps1 run.ps1
 # Edita run.ps1 con tus API keys
 .\run.ps1
 ```
 
-O directamente por línea de comandos:
-
-```bash
-flutter run \
-  --dart-define=GEMINI_API_KEY=tu_clave_gemini \
-  --dart-define=EDAMAM_APP_ID=tu_app_id \
-  --dart-define=EDAMAM_APP_KEY=tu_app_key
-```
-
-> **Nota**: Consulta [`.env.example`](.env.example) para ver todas las variables disponibles.
-
-#### ¿Dónde obtener las API keys?
+### 🔑 ¿Dónde obtener las API keys?
 
 | Servicio | URL | Tier Gratuito |
-|----------|-----|---------------|
+| :--- | :--- | :--- |
 | **Google Gemini** | [ai.google.dev](https://ai.google.dev/) | 15 RPM gratis |
-| **USDA FoodData** | [fdc.nal.usda.gov](https://fdc.nal.usda.gov/api-key-signup.html) | Ilimitado |
+| **Groq** | [console.groq.com](https://console.groq.com/) | 30 RPM gratis |
 | **Edamam** | [developer.edamam.com](https://developer.edamam.com/) | 100 req/min |
-| **OpenFoodFacts** | [world.openfoodfacts.org](https://world.openfoodfacts.org/) | Sin límite (open data) |
+| **USDA FoodData** | [fdc.nal.usda.gov](https://fdc.nal.usda.gov/api-key-signup.html) | Ilimitado |
+| **OpenFoodFacts** | [world.openfoodfacts.org](https://world.openfoodfacts.org/) | Open data (sin límite) |
+| **Spoonacular** | [spoonacular.com/food-api](https://spoonacular.com/food-api) | 150 req/día |
 
-### 4. Modelo YOLO26 TFLite
+### 3. Modelo YOLO26 TFLite
 
-El modelo no está incluido en el repositorio debido a su tamaño (~42 MB). Descárgalo y colócalo en:
+El modelo preentrenado ya está incluido en el repositorio:
 
 ```
-assets/models/best_float16.tflite    # Modelo YOLO26 float16
-assets/models/labels.txt              # Etiquetas de las 30 clases
+assets/models/best_float16.tflite    # 42 MB — YOLO26 float16
+assets/models/labels.txt              # 30 clases de comida chilena
+assets/models/data.yaml              # Configuración del dataset
 ```
 
-> **Contacto**: Si necesitas acceso al modelo pre-entrenado, abre un issue en el repositorio.
-
-### 5. Ejecutar
+### 4. Ejecutar
 
 ```bash
 flutter run
@@ -408,22 +460,15 @@ flutter run
 
 ---
 
-## 📊 Clases Detectadas (30)
+## 🛠️ Scripts Útiles
 
-El modelo YOLO26 está entrenado para reconocer las siguientes comidas:
-
-| # | Clase | # | Clase | # | Clase |
-|---|-------|---|-------|---|-------|
-| 1 | Arroz | 11 | Empanada | 21 | Pasta |
-| 2 | Arvejas | 12 | Ensalada chilena | 22 | Pastel de choclo |
-| 3 | Brócoli | 13 | Huevos fritos | 23 | Pescado frito |
-| 4 | Calzones rotos | 14 | Humitas | 24 | Pizza |
-| 5 | Carne | 15 | Manzana | 25 | Plátano |
-| 6 | Cazuela | 16 | Mote con huesillo | 26 | Pollo |
-| 7 | Charquicán | 17 | Naranja | 27 | Porotos con riendas |
-| 8 | Choripán | 18 | Palomitas | 28 | Salmón |
-| 9 | Completos | 19 | Palta | 29 | Sopaipillas |
-| 10 | Durazno | 20 | Papas fritas | 30 | Tiramisú |
+```bash
+flutter analyze          # Análisis estático (0 issues ✅)
+flutter test             # Suite de 58 tests (100% pass ✅)
+dart format lib/         # Formatear código
+flutter clean            # Limpiar build cache
+dart fix --apply         # Aplicar fixes automáticos
+```
 
 ---
 
@@ -431,21 +476,9 @@ El modelo YOLO26 está entrenado para reconocer las siguientes comidas:
 
 - **Semantics** en componentes interactivos con etiquetas descriptivas
 - **Tooltips** en botones de cámara, flash y menús contextuales
-- **Haptic Feedback** multinivel (light, medium, heavy) para confirmar acciones
+- **Haptic Feedback** multinivel para confirmar acciones táctiles
 - **Contraste WCAG AA** con ratio mínimo de 4.5:1 sobre fondos oscuros
-- **Overflow protegido** con `maxLines` + `ellipsis` para pantallas pequeñas
-
----
-
-## 🛠️ Scripts Útiles
-
-```bash
-flutter clean                    # Limpiar build cache
-flutter pub get                  # Reinstalar dependencias
-dart fix --apply                 # Aplicar fixes automáticos
-dart format lib/                 # Formatear todo el código
-flutter analyze                  # Análisis estático
-```
+- **Overflow protegido** con `maxLines` + `ellipsis` en pantallas pequeñas
 
 ---
 
@@ -456,5 +489,6 @@ Distribuido bajo licencia **MIT**. Ver [`LICENSE`](LICENSE) para más informaci�
 ---
 
 <p align="center">
-  <strong>Construido con 💜 y mucho café ☕ en Chile 🇨🇱</strong>
+  <strong>Construido con 💜 y mucho café ☕ en Chile 🇨🇱</strong><br>
+  <sub>Francisco Paimilla · 2026</sub>
 </p>

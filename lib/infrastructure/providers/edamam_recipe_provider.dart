@@ -83,11 +83,15 @@ class EdamamRecipeProvider implements RecipeProvider {
             food['foodId']?.toString() ?? 'edamam_${label.hashCode}';
         final image = food['image']?.toString();
         final category = food['category']?.toString() ?? '';
+        
+        // Skip very generic/low-quality items (condiments, water, etc.)
+        if (label.length < 3) continue;
+        if (kcal < 10 && protein < 1) continue; // Water, salt, etc.
 
         results.add(FoodItem(
           source: FoodSource.edamam,
           itemId: foodId,
-          nameEs: label,
+          nameEs: label, // Will be translated by orchestrator
           nameEn: label,
           portion: const Portion(amount: 100, unit: 'g'),
           nutrition: Nutrition(

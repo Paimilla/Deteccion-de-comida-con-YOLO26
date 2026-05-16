@@ -7,7 +7,6 @@ import '../../application/app_services.dart';
 import '../../domain/models/tracking_models.dart';
 import '../widgets/animated_screen_body.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/feedback_widgets.dart';
 import '../widgets/nutrifoto_ui.dart';
 
 class HistoryScreen extends StatefulWidget {

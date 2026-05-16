@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
-import '../../domain/models/nutrition_models.dart';
 import '../../domain/models/tracking_models.dart';
 import '../widgets/nutrifoto_ui.dart';
 
@@ -102,18 +101,35 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       );
 
       // Verificar si ya tiene perfil nutricional
-      final hasProfile = await widget.services.trackingUseCases.hasUserProfile();
+      bool hasProfile = await widget.services.trackingUseCases.hasUserProfile();
 
       if (!mounted) return;
 
-      if (hasProfile) {
+      if (!hasProfile) {
+        // PARCHE: Si entra con Google, inicializamos un perfil básico para evitar el bloqueo del onboarding
+        // El usuario podrá editar estos datos luego en Settings.
+        await widget.services.trackingUseCases.setNutritionGoals(const NutritionGoals(
+          kcal: 2000,
+          proteinG: 120,
+          carbsG: 230,
+          fatG: 60,
+        ));
+
+        await widget.services.trackingUseCases.saveUserProfile(UserProfile(
+          name: user.displayName,
+          gender: 'No especificado',
+          weightKg: 70,
+          heightCm: 170,
+          age: 30,
+          exercisePerWeek: 3,
+          createdAt: DateTime.now(),
+        ));
+        
+        hasProfile = true;
+      }
+
+      if (hasProfile && mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.hoy);
-      } else {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.onboarding,
-          arguments: {'prefillName': user.displayName},
-        );
       }
     } catch (e) {
       if (!mounted) return;

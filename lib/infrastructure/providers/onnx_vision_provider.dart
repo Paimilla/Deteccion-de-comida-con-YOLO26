@@ -22,7 +22,6 @@ class OnnxVisionProvider implements VisionProvider {
   List<String>? _labels;
   bool _isInitialized = false;
   bool _useTflite = false;
-  String _tfliteError = '';
 
   static const String _labelsPath = 'assets/models/labels.txt';
   static const int _inputSize = 640;
@@ -53,7 +52,6 @@ class OnnxVisionProvider implements VisionProvider {
           debugPrint('✅ Modo TFLite activado (YOLOv11)');
         } catch (e) {
           debugPrint('⚠️ TFLite falló: $e');
-          _tfliteError = e.toString();
           _useTflite = false;
         }
       } else {
@@ -62,11 +60,10 @@ class OnnxVisionProvider implements VisionProvider {
       }
 
       _isInitialized = true;
-    } catch (e, stack) {
+    } catch (e) {
       debugPrint('❌ Error inicializando provider: $e');
       _useTflite = false;
       _isInitialized = true;
-      _tfliteError = e.toString();
     }
   }
 

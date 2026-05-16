@@ -12,37 +12,43 @@ class TrackingUseCases {
     required FoodItem food,
     DateTime? timestamp,
   }) async {
+    await addFoodEntries(mealSlot: mealSlot, foods: [food], timestamp: timestamp);
+  }
+
+  Future<void> addFoodEntries({
+    required MealSlot mealSlot,
+    required List<FoodItem> foods,
+    DateTime? timestamp,
+  }) async {
     final ts = timestamp ?? DateTime.now();
-
     final existing = await repository.getEntriesForDay(ts);
-    final isDuplicate = existing.any((entry) {
-      if (entry.mealSlot != mealSlot) {
-        return false;
+    final List<DiaryEntry> toSave = [];
+
+    for (final food in foods) {
+      final isDuplicate = existing.any((entry) {
+        if (entry.mealSlot != mealSlot) return false;
+        final sameItem = entry.food.itemId == food.itemId ||
+            entry.food.nameEs.trim().toLowerCase() == food.nameEs.trim().toLowerCase();
+        if (!sameItem) return false;
+        final secondsDiff = entry.timestamp.difference(ts).inSeconds.abs();
+        final kcalDiff = (entry.food.nutrition.kcal - food.nutrition.kcal).abs();
+        return secondsDiff <= 45 && kcalDiff < 1;
+      });
+
+      if (!isDuplicate) {
+        final id = '${ts.microsecondsSinceEpoch}_${food.itemId}_${toSave.length}';
+        toSave.add(DiaryEntry(
+          id: id,
+          timestamp: ts,
+          mealSlot: mealSlot,
+          food: food,
+        ));
       }
-
-      final sameItem = entry.food.itemId == food.itemId ||
-          entry.food.nameEs.trim().toLowerCase() == food.nameEs.trim().toLowerCase();
-      if (!sameItem) {
-        return false;
-      }
-
-      final secondsDiff = entry.timestamp.difference(ts).inSeconds.abs();
-      final kcalDiff = (entry.food.nutrition.kcal - food.nutrition.kcal).abs();
-      return secondsDiff <= 45 && kcalDiff < 1;
-    });
-
-    if (isDuplicate) {
-      return;
     }
 
-    final id = '${ts.microsecondsSinceEpoch}_${food.itemId}';
-    final entry = DiaryEntry(
-      id: id,
-      timestamp: ts,
-      mealSlot: mealSlot,
-      food: food,
-    );
-    await repository.saveEntry(entry);
+    if (toSave.isNotEmpty) {
+      await repository.saveEntries(toSave);
+    }
   }
 
   Future<void> removeFoodEntry(String entryId) {
@@ -161,5 +167,30 @@ class TrackingUseCases {
 
   Future<void> clearUserProfile() async {
     await repository.deleteUserProfile();
+  }
+
+  /// Obtiene los alimentos más consumidos en los últimos 30 días.
+  Future<List<FoodItem>> getFrequentFoods({int limit = 10}) async {
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    
+    final entries = await repository.getEntriesBetween(thirtyDaysAgo, now);
+    if (entries.isEmpty) return [];
+
+    // Contar frecuencias
+    final Map<String, int> counts = {};
+    final Map<String, FoodItem> items = {};
+
+    for (final entry in entries) {
+      final key = entry.food.nameEs.toLowerCase().trim();
+      counts[key] = (counts[key] ?? 0) + 1;
+      items[key] = entry.food;
+    }
+
+    // Ordenar por frecuencia
+    final sortedKeys = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+
+    return sortedKeys.take(limit).map((key) => items[key]!).toList();
   }
 }

@@ -447,12 +447,13 @@ class _PlanScreenState extends State<PlanScreen>
                             onDelete: () => _deleteWithUndo(entry),
                             onDuplicate: () async {
                               HapticFeedback.lightImpact();
+                              final messenger = ScaffoldMessenger.of(context);
                               await widget.services.trackingUseCases.duplicateFoodEntry(entry);
                               if (mounted) {
                                 await _loadSelectedDay();
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.clearSnackBars();
+                                  messenger.showSnackBar(
                                     SnackBar(
                                       content: Row(
                                         children: [

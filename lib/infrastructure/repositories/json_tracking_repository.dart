@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/models/nutrition_models.dart';
 import '../../domain/models/tracking_models.dart';
@@ -7,18 +9,33 @@ import '../../domain/repositories/tracking_repository.dart';
 
 class JsonTrackingRepository implements TrackingRepository {
   final File _file;
+  Map<String, dynamic>? _cachedDb;
+  final _updateController = StreamController<void>.broadcast();
 
   JsonTrackingRepository({required String filePath}) : _file = File(filePath);
 
   @override
+  Stream<void> get onRepositoryUpdated => _updateController.stream;
+
+  @override
+  void notifyUpdate() => _updateController.add(null);
+
+  @override
   Future<void> saveEntry(DiaryEntry entry) async {
+    await saveEntries([entry]);
+  }
+
+  @override
+  Future<void> saveEntries(List<DiaryEntry> entriesList) async {
     final db = await _loadDb();
     final entries = (db['entries'] as List?) ?? <dynamic>[];
 
-    entries.removeWhere((e) => (e as Map<String, dynamic>)['id'] == entry.id);
-    entries.add(_entryToJson(entry));
+    for (final entry in entriesList) {
+      entries.removeWhere((e) => (e as Map<String, dynamic>)['id'] == entry.id);
+      entries.add(_entryToJson(entry));
+    }
+    
     db['entries'] = entries;
-
     await _saveDb(db);
   }
 
@@ -193,41 +210,54 @@ class JsonTrackingRepository implements TrackingRepository {
   }
 
   Future<Map<String, dynamic>> _loadDb() async {
+    if (_cachedDb != null) return _cachedDb!;
+
     if (!await _file.exists()) {
-      return {
+      _cachedDb = {
         'entries': <dynamic>[],
         'hydration': <dynamic>[],
         'user_profile': null,
       };
+      return _cachedDb!;
     }
 
-    final raw = await _file.readAsString();
-    if (raw.trim().isEmpty) {
-      return {
-        'entries': <dynamic>[],
-        'hydration': <dynamic>[],
-        'user_profile': null,
-      };
+    try {
+      final raw = await _file.readAsString();
+      if (raw.trim().isEmpty) {
+        return {
+          'entries': <dynamic>[],
+          'hydration': <dynamic>[],
+          'user_profile': null,
+        };
+      }
+
+      final parsed = jsonDecode(raw);
+      if (parsed is Map<String, dynamic>) {
+        parsed.putIfAbsent('entries', () => <dynamic>[]);
+        parsed.putIfAbsent('hydration', () => <dynamic>[]);
+        parsed.putIfAbsent('user_profile', () => null);
+        _cachedDb = parsed;
+        return _cachedDb!;
+      }
+    } catch (e) {
+      debugPrint('❌ Error crítico leyendo DB JSON: $e');
+      // Si el archivo está corrupto, podríamos intentar renombrarlo para no perderlo del todo
+      // pero por ahora evitemos que se limpie solo
     }
 
-    final parsed = jsonDecode(raw);
-    if (parsed is Map<String, dynamic>) {
-      parsed.putIfAbsent('entries', () => <dynamic>[]);
-      parsed.putIfAbsent('hydration', () => <dynamic>[]);
-      parsed.putIfAbsent('user_profile', () => null);
-      return parsed;
-    }
-
-    return {
+    _cachedDb = {
       'entries': <dynamic>[],
       'hydration': <dynamic>[],
       'user_profile': null,
     };
+    return _cachedDb!;
   }
 
   Future<void> _saveDb(Map<String, dynamic> db) async {
+    _cachedDb = db;
     await _file.parent.create(recursive: true);
-    await _file.writeAsString(jsonEncode(db));
+    await _file.writeAsString(jsonEncode(db), flush: true);
+    notifyUpdate();
   }
 
   Map<String, dynamic> _entryToJson(DiaryEntry entry) {

@@ -11,6 +11,9 @@ class ApiConfig {
   /// API key de Google Gemini para el parser NLP de voz
   final String geminiApiKey;
 
+  /// API key de Groq (Backup)
+  final String groqApiKey;
+
   /// Edamam Food Database API credentials
   final String edamamAppId;
   final String edamamAppKey;
@@ -25,6 +28,7 @@ class ApiConfig {
     required this.fastApiBaseUrl,
     this.libreTranslateApiKey,
     this.geminiApiKey = '',
+    this.groqApiKey = '',
     this.edamamAppId = '',
     this.edamamAppKey = '',
   });

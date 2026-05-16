@@ -5,6 +5,7 @@ import '../../application/app_routes.dart';
 import '../../application/app_services.dart';
 import '../../domain/models/nutrition_models.dart';
 import '../../domain/models/tracking_models.dart';
+import '../../infrastructure/services/meal_slot_suggestions_service.dart';
 import '../widgets/animated_screen_body.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/app_notifier.dart';
@@ -23,137 +24,188 @@ class RecipesScreen extends StatefulWidget {
 class _RecipesScreenState extends State<RecipesScreen> {
   final _ingredientCtrl = TextEditingController();
   bool _loading = false;
-  bool _saving = false;
   MealSlot _mealSlot = MealSlot.cena;
   bool _argsApplied = false;
   List<FoodItem> _results = const [];
+  List<FoodItem> _frequentItems = const [];
   String? _error;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_argsApplied) return;
+    
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map && args['mealSlot'] is MealSlot) {
       _mealSlot = args['mealSlot'] as MealSlot;
     }
     _argsApplied = true;
+    _loadInitialSuggestions();
+    _loadFrequentFoods();
   }
 
-  // Sugerencias populares para búsqueda rápida
-  static const _suggestions = [
-    _Suggestion('🍗', 'Pollo'),
-    _Suggestion('🍚', 'Arroz'),
-    _Suggestion('🥚', 'Huevo'),
-    _Suggestion('🍝', 'Pasta'),
-    _Suggestion('🥩', 'Carne'),
-    _Suggestion('🐟', 'Pescado'),
-    _Suggestion('🥑', 'Palta'),
-    _Suggestion('🍌', 'Fruta'),
-    _Suggestion('🥛', 'Lácteos'),
-    _Suggestion('🥗', 'Ensalada'),
-    _Suggestion('🍞', 'Pan'),
-  ];
+  // Sugerencias populares para búsqueda rápida - DINÁMICAS por tipo de comida
 
   // Sugerencias estáticas para carga instantánea (mientras cargan las de API)
-  static final List<FoodItem> _staticFeatured = [
-    const FoodItem(
+  // ── Catálogos Premium por Horario para Video Demo ──
+  static List<FoodItem> _getStaticFeaturedFor(MealSlot slot) {
+    switch (slot) {
+      case MealSlot.desayuno:
+        return [
+          _buildDemoItem('demo_huevos', 'Paila de Huevos de Campo', 'Eggs', 280, 18, 2, 22, 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&q=80&w=800', 'Huevos recién preparados con un toque de ciboulette y tostadas.'),
+          _buildDemoItem('demo_avena', 'Bowl de Avena y Frutos Rojos', 'Oatmeal', 320, 12, 45, 8, 'https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&q=80&w=800', 'Energía natural con avena integral, arándanos y miel.'),
+        ];
+      case MealSlot.once:
+        return [
+          _buildDemoItem('demo_once_1', 'Sándwich de Pavo y Palta', 'Turkey Sandwich', 420, 25, 35, 18, 'https://images.unsplash.com/photo-1550507992-eb63ffee0847?auto=format&fit=crop&q=80&w=800', 'La clásica once chilena: pan integral, pechuga de pavo y palta hass.'),
+          _buildDemoItem('demo_once_2', 'Quesillo con Tomate y Albahaca', 'Fresh Cheese', 210, 15, 8, 12, 'https://images.unsplash.com/photo-1560684352-8497838a2229?auto=format&fit=crop&q=80&w=800', 'Una opción liviana y fresca para terminar el día.'),
+        ];
+      case MealSlot.snack:
+        return [
+          _buildDemoItem('demo_snack_1', 'Mix de Frutos Secos Premium', 'Nut Mix', 180, 6, 8, 14, 'https://images.unsplash.com/photo-1511112181181-026b860c5bb7?auto=format&fit=crop&q=80&w=800', 'Combinación de nueces, almendras y castañas de cajú.'),
+          _buildDemoItem('demo_snack_2', 'Yogurt Griego con Granola', 'Greek Yogurt', 240, 18, 22, 6, 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&q=80&w=800', 'Snack proteico con granola crujiente y semillas de chía.'),
+        ];
+      case MealSlot.almuerzo:
+      case MealSlot.cena:
+        return [
+          _buildDemoItem('demo_pastel', 'Pastel de Choclo Tradicional', 'Corn Pie', 450, 22, 45, 18, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&q=80&w=800', 'Pino de carne, pollo y crema de maíz tostado.'),
+          _buildDemoItem('demo_paila', 'Paila Marina de la Costa', 'Seafood Soup', 320, 35, 12, 8, 'https://images.unsplash.com/photo-1534080564607-198f9dd5d61a?auto=format&fit=crop&q=80&w=800', 'Mix de mariscos frescos en caldo caliente reconfortante.'),
+        ];
+    }
+  }
+
+  static FoodItem _buildDemoItem(String id, String name, String nameEn, double kcal, double p, double c, double f, String url, String desc) {
+    // Estimate prep time and difficulty from calorie complexity
+    final prepTime = kcal > 400 ? 35 : (kcal > 250 ? 25 : 15);
+    final difficulty = kcal > 400 ? 'Alta' : (kcal > 200 ? 'Media' : 'Fácil');
+    
+    return FoodItem(
       source: FoodSource.localChile,
-      itemId: 'st_pollo',
-      nameEs: 'Pechuga de Pollo a la Plancha',
-      portion: Portion(amount: 150, unit: 'g'),
-      nutrition: Nutrition(kcal: 247, proteinG: 46, carbsG: 1, fatG: 5.5),
-      imageUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=400&auto=format&fit=crop',
+      itemId: id,
+      nameEs: name,
+      nameEn: nameEn,
+      portion: const Portion(amount: 100, unit: 'g'),
+      nutrition: Nutrition(kcal: kcal, proteinG: p, carbsG: c, fatG: f),
+      imageUrl: url,
       metadata: {
-        'short_description_es': 'Pechuga tierna y jugosa preparada con finas hierbas.',
-        'instructions_es': '1. Sazonar la pechuga.\n2. Cocinar en sartén caliente 6 min por lado.\n3. Reposar y servir.'
+        'short_description_es': desc,
+        'prep_time': prepTime,
+        'difficulty': difficulty,
+        'instructions_es': _generateContextualInstructions(name),
       },
-    ),
-    const FoodItem(
-      source: FoodSource.localChile,
-      itemId: 'st_salmon',
-      nameEs: 'Salmón con Espárragos',
-      portion: Portion(amount: 200, unit: 'g'),
-      nutrition: Nutrition(kcal: 380, proteinG: 40, carbsG: 2, fatG: 22),
-      imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=400&auto=format&fit=crop',
-      metadata: {
-        'short_description_es': 'Filete de salmón fresco acompañado de vegetales salteados.',
-        'instructions_es': '1. Sellar el salmón.\n2. Saltear los espárragos con ajo.\n3. Servir caliente.'
-      },
-    ),
-    const FoodItem(
-      source: FoodSource.localChile,
-      itemId: 'st_ensalada',
-      nameEs: 'Ensalada César con Pollo',
-      portion: Portion(amount: 300, unit: 'g'),
-      nutrition: Nutrition(kcal: 420, proteinG: 25, carbsG: 15, fatG: 28),
-      imageUrl: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?q=80&w=400&auto=format&fit=crop',
-      metadata: {
-        'short_description_es': 'Una opción ligera y saciante con aderezo bajo en grasa.',
-        'instructions_es': '1. Picar lechuga.\n2. Agregar pollo a la plancha.\n3. Aderezar y servir.'
-      },
-    ),
-    const FoodItem(
-      source: FoodSource.localChile,
-      itemId: 'st_avena',
-      nameEs: 'Bowl de Avena y Frutos Rojos',
-      portion: Portion(amount: 250, unit: 'g'),
-      nutrition: Nutrition(kcal: 310, proteinG: 12, carbsG: 45, fatG: 8),
-      imageUrl: 'https://images.unsplash.com/photo-1517673132405-a56a62b18caf?q=80&w=400&auto=format&fit=crop',
-      metadata: {
-        'short_description_es': 'Energía natural con avena integral y antioxidantes frescos.',
-        'instructions_es': '1. Cocinar avena con leche o agua.\n2. Agregar frutos rojos frescos.\n3. Endulzar al gusto.'
-      },
-    ),
-  ];
+    );
+  }
+
+  /// Generates contextual preparation instructions based on food name
+  static String _generateContextualInstructions(String foodName) {
+    final lower = foodName.toLowerCase();
+    if (lower.contains('huevo') || lower.contains('paila')) {
+      return 'Calentar una sartén con un poco de aceite a fuego medio.\nCascar los huevos con cuidado directamente en la sartén caliente.\nCocinar por 3-4 minutos hasta que la clara esté firme.\nSazonar con sal, pimienta y ciboulette fresco al servir.';
+    }
+    if (lower.contains('avena') || lower.contains('bowl')) {
+      return 'Hervir la leche o agua en una olla pequeña.\nAgregar la avena y revolver durante 5 minutos a fuego bajo.\nServir en un bowl y agregar frutos rojos frescos encima.\nEndulzar con miel natural y añadir semillas de chía.';
+    }
+    if (lower.contains('sándwich') || lower.contains('sandwich')) {
+      return 'Tostar ligeramente el pan integral en la tostadora.\nUntar una capa generosa de palta madura sobre el pan.\nAgregar las láminas de pavo y vegetales frescos.\nSazonar con limón, sal y pimienta al gusto.';
+    }
+    if (lower.contains('pastel') || lower.contains('choclo')) {
+      return 'Preparar el pino con carne molida, cebolla y especias.\nColocar la base de pino en fuentes individuales de greda.\nCubrir con pasta de choclo fresco y espolvorear azúcar.\nGratinar al horno a 200°C por 25-30 minutos hasta dorar.';
+    }
+    if (lower.contains('paila') || lower.contains('marina') || lower.contains('marisco')) {
+      return 'Preparar un caldo base con cebolla, ajo y vino blanco.\nAgregar los mariscos frescos comenzando por los de cocción más larga.\nDejar hervir a fuego medio por 10-12 minutos.\nServir caliente con limón y cilantro fresco picado.';
+    }
+    if (lower.contains('yogurt') || lower.contains('granola')) {
+      return 'Servir el yogurt griego natural en un bowl amplio.\nAgregar la granola crujiente formando una capa uniforme.\nDecorar con frutas frescas de temporada.\nFinalizar con un toque de miel y semillas de chía.';
+    }
+    if (lower.contains('frutos secos') || lower.contains('mix')) {
+      return 'Seleccionar una mezcla variada de frutos secos de calidad.\nTostar ligeramente en sartén seca por 3-4 minutos.\nDejar enfriar y mezclar con un toque de sal marina.\nPorcionar en bolsas individuales para snacks de la semana.';
+    }
+    if (lower.contains('quesillo') || lower.contains('queso')) {
+      return 'Cortar el quesillo fresco en rodajas de 1cm de espesor.\nDisponerlas en un plato intercaladas con rodajas de tomate.\nAgregar hojas de albahaca fresca y un hilo de aceite de oliva.\nSazonar con sal de mar, pimienta y orégano.';
+    }
+    // Default contextual
+    return 'Reunir y preparar todos los ingredientes frescos necesarios.\nCocinar siguiendo las proporciones indicadas en la receta.\nAjustar la sazón al gusto personal con especias naturales.\nEmplatar de forma atractiva y servir de inmediato.';
+  }
 
   late List<FoodItem> _featuredItems;
 
   @override
   void initState() {
     super.initState();
-    _featuredItems = List.from(_staticFeatured);
-    _loadInitialSuggestions();
+    _featuredItems = _getStaticFeaturedFor(_mealSlot);
+    // Ya no cargamos aquí, esperamos a didChangeDependencies para tener el MealSlot
+  }
+
+  Future<void> _loadFrequentFoods() async {
+    try {
+      final frequent = await widget.services.trackingUseCases.getFrequentFoods(limit: 6);
+      if (mounted && frequent.isNotEmpty) {
+        setState(() {
+          _frequentItems = frequent;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading frequent foods: $e');
+    }
   }
 
   Future<void> _loadInitialSuggestions() async {
-    // Ya tenemos los estáticos, cargamos más de la API en segundo plano
+    if (!mounted) return;
+    
+    // Limpiar resultados anteriores inmediatamente para evitar el efecto "buggy"
+    setState(() {
+      _featuredItems = []; 
+      _loading = true;
+    });
+
     try {
-      final items = await widget.services.foodOrchestrator.searchRecipesInSpanish('saludable');
-      if (mounted && items.isNotEmpty) {
+      // Usar búsqueda específica para el tipo de comida seleccionado
+      final query = MealSlotSuggestionsService.getSearchQueryForMealSlot(_mealSlot);
+      debugPrint('🤖 Buscando sugerencias para ${_mealSlot.label}: $query');
+      
+      final items = await widget.services.foodOrchestrator.searchRecipesInSpanish(query);
+      
+      // Filtrar resultados que NO tengan imagen para asegurar la estética
+      final filteredItems = items.where((item) => 
+        item.imageUrl != null && 
+        item.imageUrl!.isNotEmpty && 
+        !item.imageUrl!.contains('placeholder')
+      ).toList();
+
+      if (mounted) {
         setState(() {
-          // Combinamos: Estáticos primero, luego API
-          _featuredItems = [..._staticFeatured, ...items.take(7)].toList();
+          _loading = false;
+          if (filteredItems.isNotEmpty) {
+            _featuredItems = filteredItems.take(12).toList();
+          } else {
+            // Si la búsqueda no trajo nada estético, usamos nuestro catálogo premium por horario
+            _featuredItems = _getStaticFeaturedFor(_mealSlot);
+          }
         });
-      } else if (mounted) {
-        // Fallback si 'saludable' no trae nada
-        final fallback = await widget.services.foodOrchestrator.searchRecipesInSpanish('pollo');
-        if (mounted && fallback.isNotEmpty) {
-          setState(() {
-            _featuredItems = [..._staticFeatured, ...fallback.take(7)].toList();
-          });
-        }
       }
     } catch (e) {
       debugPrint('Error loading initial suggestions: $e');
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _saveItem(FoodItem item) async {
-    if (_saving) return;
-    setState(() => _saving = true);
-
-    await widget.services.trackingUseCases.addFoodEntry(
-      mealSlot: _mealSlot,
-      food: item,
-    );
-
-    if (!mounted) return;
-    setState(() => _saving = false);
+    // 1. Feedback táctil inmediato
+    HapticFeedback.mediumImpact();
+    
+    // 2. Notificación instantánea (UI Optimista)
     AppNotifier.success(
       context,
       '${item.nameEs} registrado con éxito',
     );
+
+    // 3. Guardado en segundo plano (sin bloquear la UI)
+    widget.services.trackingUseCases.addFoodEntry(
+      mealSlot: _mealSlot,
+      food: item,
+    ).then((_) {
+      if (mounted) _loadFrequentFoods();
+    });
   }
 
   @override
@@ -213,7 +265,27 @@ class _RecipesScreenState extends State<RecipesScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Comidas y Recetas')),
+      appBar: AppBar(
+        title: const Text('Comidas y Recetas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Limpiar caché y refrescar',
+            onPressed: () {
+              // Limpiamos el caché global de búsquedas
+              widget.services.searchCache?.clearAll();
+              widget.services.foodOrchestrator.clearFullItemCache();
+              // Forzamos carga fresca
+              _loadInitialSuggestions();
+              _loadFrequentFoods();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Caché limpiado. Buscando recetas frescas...')),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       bottomNavigationBar: const AppBottomNav(currentRoute: AppRoutes.hoy),
       body: AnimatedScreenBody(
         child: ListView(
@@ -281,6 +353,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _mealSlot = value);
+                        _loadInitialSuggestions(); // Actualizar sugerencias al cambiar el horario
                       }
                     },
                   ),
@@ -293,17 +366,23 @@ class _RecipesScreenState extends State<RecipesScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _suggestions
-                    .map((s) => Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: _SuggestionChip(
-                            suggestion: s,
-                            onTap: () {
-                              _ingredientCtrl.text = s.label;
-                              _search(s.label);
-                            },
-                          ),
-                        ))
+                children: MealSlotSuggestionsService.getQuickSuggestionsForMealSlot(_mealSlot)
+                    .map((label) {
+                      final parts = label.split(' ');
+                      final emoji = parts.length > 1 ? parts[0] : '🔍';
+                      final text = parts.length > 1 ? parts.sublist(1).join(' ') : label;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: _SuggestionChip(
+                          suggestion: _Suggestion(emoji, text),
+                          onTap: () {
+                            _ingredientCtrl.text = text;
+                            _search(text);
+                          },
+                        ),
+                      );
+                    })
                     .toList(),
               ),
             ),
@@ -311,17 +390,67 @@ class _RecipesScreenState extends State<RecipesScreen> {
 
             // ── Sugerencias iniciales ──
             if (_results.isEmpty) ...[
+              // ── NUEVA SECCIÓN: Alimentos frecuentes (Historial) ──
+              if (_frequentItems.isNotEmpty && _results.isEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.history, color: NutrifotoColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lo que más comes',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : Colors.black87,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _frequentItems.length,
+                    itemBuilder: (context, index) {
+                      final item = _frequentItems[index];
+                      return _FrequentFoodChip(
+                        item: item,
+                        onTap: () => _showDetail(item),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+
               Row(
                 children: [
                   const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    'Sugerencias para ti',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : Colors.black87,
-                      letterSpacing: -0.5,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Sugerencias de ${_mealSlot.label}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : Colors.black87,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        Text(
+                          MealSlotSuggestionsService.getDescriptionForMealSlot(_mealSlot),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -330,7 +459,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
               if (_featuredItems.isNotEmpty)
                 ..._featuredItems.map((item) => _FoodResultCard(
                       item: item,
-                      saving: _saving,
                       onSave: () => _showDetail(item),
                       onTap: () => _showDetail(item),
                       isFeatured: true,
@@ -353,29 +481,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
                   ),
                 ),
 
-              const SizedBox(height: 24),
-              Text(
-                'Categorías populares',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _suggestions
-                    .map((s) => _SuggestionChip(
-                          suggestion: s,
-                          onTap: () {
-                            _ingredientCtrl.text = s.label;
-                            _search(s.label);
-                          },
-                        ))
-                    .toList(),
-              ),
             ],
 
             // ── Loading ──
@@ -401,7 +506,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
               const SizedBox(height: 8),
               ..._results.map((item) => _FoodResultCard(
                     item: item,
-                    saving: _saving,
                     onTap: () => _showDetail(item),
                     onSave: () => _showDetail(item),
                   )),
@@ -485,20 +589,94 @@ class _SuggestionChip extends StatelessWidget {
   }
 }
 
+class _FrequentFoodChip extends StatelessWidget {
+  final FoodItem item;
+  final VoidCallback onTap;
+
+  const _FrequentFoodChip({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: ClipOval(
+                child: NutrifotoImage(
+                  imageUrl: item.imageUrl,
+                  name: item.nameEs,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.nameEs,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _FoodResultCard extends StatelessWidget {
   final FoodItem item;
-  final bool saving;
   final VoidCallback onSave;
   final VoidCallback onTap;
   final bool isFeatured;
 
   const _FoodResultCard({
     required this.item,
-    required this.saving,
     required this.onSave,
     required this.onTap,
     this.isFeatured = false,
   });
+
+  /// Estimates prep time from metadata or caloric complexity
+  static int _estimatePrepTime(FoodItem item) {
+    // Use metadata if available
+    final metaTime = item.metadata['prep_time'];
+    if (metaTime is int) return metaTime;
+    if (metaTime is num) return metaTime.toInt();
+    
+    // Smart estimate based on food characteristics
+    final kcal = item.nutrition.kcal;
+    final hasInstructions = item.metadata['instructions'] != null || 
+                           item.metadata['instructions_es'] != null;
+    
+    if (kcal > 500) return 45;
+    if (kcal > 350) return 35;
+    if (kcal > 200) return 25;
+    if (hasInstructions) return 20;
+    return 15;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -599,7 +777,7 @@ class _FoodResultCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      _TimeBadge(minutes: 15 + (item.itemId.length % 20)),
+                      _TimeBadge(minutes: _estimatePrepTime(item)),
                     ],
                   ),
                 ),
@@ -825,6 +1003,28 @@ class _RecipeDetailSheetState extends State<_RecipeDetailSheet> {
     }
   }
 
+  String _getDifficulty() {
+    final meta = _item.metadata['difficulty'];
+    if (meta is String && meta.isNotEmpty) return meta;
+    
+    final kcal = _item.nutrition.kcal;
+    if (kcal > 500) return 'Alta';
+    if (kcal > 250) return 'Media';
+    return 'Fácil';
+  }
+
+  int _getPrepTime() {
+    final meta = _item.metadata['prep_time'];
+    if (meta is int) return meta;
+    if (meta is num) return meta.toInt();
+    
+    final kcal = _item.nutrition.kcal;
+    if (kcal > 500) return 45;
+    if (kcal > 350) return 35;
+    if (kcal > 200) return 25;
+    return 15;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -876,17 +1076,22 @@ class _RecipeDetailSheetState extends State<_RecipeDetailSheet> {
             Row(
               children: [
                 _SourceBadge(source: _item.source),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Icon(Icons.restaurant_rounded,
                     color: NutrifotoColors.primary.withValues(alpha: 0.6), size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text('Dificultad: Media',
-                      style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.black54,
-                          fontSize: 14, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis),
-                ),
+                const SizedBox(width: 4),
+                Text(_getDifficulty(),
+                    style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 12),
+                Icon(Icons.timer_outlined,
+                    color: NutrifotoColors.accentBlue.withValues(alpha: 0.6), size: 18),
+                const SizedBox(width: 4),
+                Text('${_getPrepTime()} min',
+                    style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 40),
@@ -1066,11 +1271,14 @@ class _RecipeDetailSheetState extends State<_RecipeDetailSheet> {
                   .entries
                   .map((e) => _PreparationStep(number: e.key + 1, text: e.value.trim().endsWith('.') ? e.value.trim() : '${e.value.trim()}.')),
             ] else ...[
-              // Fallback si no hay instrucciones
-              _PreparationStep(number: 1, text: 'Lavar y preparar todos los ingredientes frescos.'),
-              _PreparationStep(number: 2, text: 'Cocinar la base según el tiempo recomendado.'),
-              _PreparationStep(number: 3, text: 'Sazonar al gusto con especias naturales.'),
-              _PreparationStep(number: 4, text: 'Emplatar de forma atractiva y disfrutar.'),
+              // Fallback: generar instrucciones contextuales según nombre del alimento
+              ..._RecipesScreenState._generateContextualInstructions(_item.nameEs)
+                  .split('\n')
+                  .where((s) => s.trim().isNotEmpty)
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map((e) => _PreparationStep(number: e.key + 1, text: e.value.trim())),
             ],
 
             const SizedBox(height: 48),

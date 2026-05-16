@@ -75,13 +75,19 @@ class _SmartSubstitutionSheetState extends State<SmartSubstitutionSheet> {
       // Filter by macro similarity (±15% kcal, ±20% protein)
       final original = widget.originalFood.nutrition;
       final filtered = results.where((item) {
-        if (item.itemId == widget.originalFood.itemId) return false;
+        if (item.itemId == widget.originalFood.itemId) {
+          return false;
+        }
         if (item.nameEs.trim().toLowerCase() ==
-            widget.originalFood.nameEs.trim().toLowerCase()) return false;
+            widget.originalFood.nameEs.trim().toLowerCase()) {
+          return false;
+        }
 
         final kcalDiff = (item.nutrition.kcal - original.kcal).abs();
         final kcalThreshold = original.kcal * 0.25;
-        if (kcalDiff > kcalThreshold && kcalThreshold > 10) return false;
+        if (kcalDiff > kcalThreshold && kcalThreshold > 10) {
+          return false;
+        }
 
         return true;
       }).toList();
