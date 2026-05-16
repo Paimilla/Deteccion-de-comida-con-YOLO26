@@ -119,6 +119,11 @@ Uno de los mayores retos fue la falta de datasets de calidad para comida chilena
 2. **Transfer Learning**: Se utilizó YOLO26 como base, optimizando hiperparámetros para dispositivos móviles.
 3. **Optimización**: Conversión a `float16` para reducir el tamaño del modelo sin sacrificar precisión significativa.
 
+<p align="center">
+  <img src="assets/docs/training/roboflow_labeling.png" alt="Proceso de Etiquetado" width="700"/>
+  <br><em>Proceso de etiquetado y aumentación de datos en Roboflow para asegurar robustez frente a diferentes ángulos y luces.</em>
+</p>
+
 > [!TIP]
 > Puedes revisar el dataset curado y el proceso de entrenamiento completo:
 > 🖼️ **[Dataset en Roboflow](https://app.roboflow.com/nutriplato/comida-chilena-mbfky/models)**
@@ -140,6 +145,72 @@ Uno de los mayores retos fue la falta de datasets de calidad para comida chilena
   <img src="assets/docs/training/training_results.png" alt="Precisión por clase" width="700"/>
   <br><em>Precisión mAP desglosada por cada una de las 30 clases detectadas.</em>
 </p>
+
+---
+
+## 🛠️ Desafíos Técnicos y Soluciones
+
+Durante el desarrollo de Nutrifoto AI, se abordaron problemas complejos de ingeniería:
+
+| Desafío | Solución Implementada |
+| :--- | :--- |
+| **Latencia de Inferencia** | Se optimizó el pipeline de imagen con `compute` isolate en Flutter para evitar bloqueos del UI Thread durante la inferencia de YOLO26. |
+| **Diversidad de APIs** | Se implementó un **Orquestador Cascade** que maneja timeouts y fallbacks automáticos entre Edamam, Spoonacular y USDA. |
+| **Sesgo de Datos** | Para la comida chilena, se utilizó **Data Augmentation** agresiva (rotación, ruido, cambios de saturación) para compensar el dataset pequeño inicial. |
+| **Consistencia de Macros** | Sistema de **Normalización de Unidades** que unifica gramos, onzas y porciones provenientes de diferentes fuentes globales. |
+
+---
+
+## 📱 Recorrido por la Experiencia (UX)
+
+La aplicación está diseñada bajo el concepto **"Magazine-First"**, priorizando la legibilidad y el impacto visual.
+
+1.  **Dashboard Inteligente**: Resumen dinámico con `fl_chart` que se actualiza en tiempo real según el consumo y las metas.
+2.  **AI Scanner Hub**: Centraliza los 4 métodos de entrada (Cámara, Voz, Escáner de Barras y Búsqueda Manual).
+3.  **Asistente Nutricional**: Chatbot con **Gemini 1.5** que analiza tu diario y te da consejos personalizados basados en tus macros restantes.
+4.  **Descubrimiento de Recetas**: Motor de búsqueda con filtros avanzados (Keto, Vegano, Tiempo) y visualización de alta calidad.
+
+---
+
+## 🏗️ Estructura del Proyecto
+
+El código está organizado siguiendo una estructura de **Clean Architecture** estricta:
+
+```text
+lib/
+├── application/       # Orquestación, Casos de Uso y Servicios de App
+│   ├── usecases/      # Lógica de negocio pura (Tracking, Insights, History)
+│   └── services/      # Orquestadores de fuentes y configuración
+├── domain/            # Modelos de datos (Entities) e Interfaces (Repositories)
+│   ├── models/        # NutritionModels, TrackingModels
+│   └── repositories/  # Definición de contratos para datos
+├── infrastructure/    # Implementaciones técnicas y acceso a Datos
+│   ├── providers/     # Clientes de APIs (Spoonacular, Edamam, YOLO26 Engine)
+│   └── repositories/  # Persistencia local (JSON/SharedPrefs)
+└── presentation/      # Capa de Interfaz de Usuario
+    ├── screens/       # Pantallas principales (Home, Scanner, Recipes, Assistant)
+    └── widgets/       # Componentes reutilizables y Design System
+```
+
+---
+
+## ✅ Calidad y Testing
+
+Para asegurar la estabilidad de una app tan dependiente de servicios externos, se implementó:
+
+- **Unit Testing**: Pruebas de los casos de uso y modelos de datos.
+- **Mocking**: Uso de mocks para simular respuestas de APIs y el motor de TFLite.
+- **Static Analysis**: Configuración estricta de `flutter_lints` para mantener un código limpio y legible.
+- **CI Readiness**: El proyecto está preparado para pipelines de integración continua.
+
+---
+
+## 🚧 Roadmap de Desarrollo
+
+- [ ] **Sincronización Cloud**: Integración con Firebase/Supabase para persistencia multi-dispositivo.
+- [ ] **Modo Offline Extendido**: Caché local de recetas populares y expansión de la base de datos chilena.
+- [ ] **Social Features**: Posibilidad de compartir logros y recetas con amigos.
+- [ ] **Integración con Health Connect**: Sincronización de calorías quemadas desde relojes inteligentes.
 
 ---
 
