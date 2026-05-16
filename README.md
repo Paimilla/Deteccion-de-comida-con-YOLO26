@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="assets/images/logo_cat_strawberry.png" alt="Nutrifoto AI" width="140"/>
+  <img src="assets/images/logo_cat_strawberry.png" alt="Nutrifoto AI" width="160"/>
 </p>
 
 <h1 align="center">Nutrifoto AI</h1>
 
 <p align="center">
   <strong>Computer Vision × Nutrición Inteligente</strong><br>
-  <sub>Detección de alimentos on-device con YOLO26, coaching nutricional con Gemini y un motor de descubrimiento de recetas multi-fuente — todo en una app móvil con UI Glassmorphism premium.</sub>
+  <sub>Detección de alimentos on-device con YOLO26, coaching nutricional con Gemini y un motor de descubrimiento de recetas multi-fuente — una experiencia móvil premium con UI Glassmorphism.</sub>
 </p>
 
 <p align="center">
@@ -15,7 +15,6 @@
   <img src="https://img.shields.io/badge/YOLO26-Custom%20Model-FF6F00?style=for-the-badge&logo=pytorch&logoColor=white" alt="YOLO26"/>
   <img src="https://img.shields.io/badge/Gemini-3.1%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini"/>
   <img src="https://img.shields.io/badge/Groq-Llama%203.3-F68B1F?style=for-the-badge&logo=meta&logoColor=white" alt="Groq"/>
-  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License"/>
 </p>
 
 <p align="center">
@@ -30,118 +29,132 @@
 
 ## 📱 Pruébala Ahora
 
-> **¿Eres reclutador?** Prueba la app en 30 segundos sin configurar nada:
+> [!IMPORTANT]
+> **¿Eres reclutador?** Puedes evaluar la experiencia técnica en 30 segundos sin necesidad de compilar nada:
 
 | Canal | Enlace |
 | :--- | :--- |
 | 📦 **APK Directo** | [Descargar última release](https://github.com/Paimilla/nutrifoto/releases) |
-| 🎬 **Video Demo** | [Ver Video en YouTube](https://youtu.be/Papv_p2c90o?si=4MR1eUosuUuBJtQS) |
-| 🌐 **Appetize.io** | [Abrir en navegador](https://appetize.io/app/b_gockvto6qiz4mdnfkatflaezui) (emulador Android real) |
+| 🎬 **Video Demo** | [Ver Walkthrough en YouTube](https://youtu.be/Papv_p2c90o?si=4MR1eUosuUuBJtQS) |
+| 🌐 **Appetize.io** | [Abrir en Navegador](https://appetize.io/app/b_gockvto6qiz4mdnfkatflaezui) (Emulador real) |
 
 ---
 
 ## 📖 Descripción
 
-**Nutrifoto AI** es un ecosistema integral que demuestra el potencial de la **visión artificial aplicada a la salud**. Diseñé y entrené un modelo **YOLO26** con un dataset propio curado de **30 clases de comida chilena**, permitiendo detección on-device precisa y fluida.
+**Nutrifoto AI** no es solo una app de registro de calorías; es un ecosistema de **visión artificial aplicada** diseñado para resolver la fricción del seguimiento nutricional. 
 
+El proyecto destaca por su **modelo YOLO26 personalizado**, entrenado específicamente para reconocer **comida chilena y latina**, superando las limitaciones de los modelos genéricos que suelen fallar con platos locales como empanadas, humitas o completos.
+
+```mermaid
+graph LR
+    A[📸 Foto/Cámara] --> B[🧠 YOLO26 On-Device]
+    B --> C{Detección}
+    C -->|Éxito| D[📊 Macro Calculation]
+    C -->|Inseguro| E[🎨 Fallback Cromático]
+    D --> F[✅ Registro en 1-Tap]
+    E --> F
 ```
-📸 Foto → 🧠 YOLO26 → 🍗 "Pollo asado" → 📊 250 kcal / 31g prot → ✅ Registrado
+
+---
+
+## ✨ Características Técnicas Destacadas
+
+### 🎯 Motor de Visión Híbrido (Edge AI)
+Implementación de **YOLO26 float16** mediante `tflite_flutter`, logrando inferencia en tiempo real (~120ms) sin depender de la nube. Incluye un sistema de **análisis cromático inteligente** como fallback para mejorar la robustez en condiciones de baja iluminación.
+
+### 🍳 Orquestador de Recetas Inteligente
+Un motor de búsqueda "Cascade" que consulta secuencialmente 6 fuentes (Spoonacular, Edamam, OpenFoodFacts, USDA y DB Local), aplicando:
+- **Deduplicación semántica** para evitar resultados repetidos.
+- **Traducción dinámica** de ingredientes mediante IA para fuentes en inglés.
+- **Enriquecimiento de datos** cruzando información entre APIs.
+
+### 🎤 NLP con Arquitectura Dual
+Procesamiento de lenguaje natural para registro por voz ("Me comí un pan con palta y un café") utilizando **Groq (Llama 3.3 70B)** por su baja latencia, con **Gemini 3.1 Flash** como respaldo de alta precisión.
+
+---
+
+## 🏗️ Arquitectura de Software
+
+El proyecto sigue los principios de **Clean Architecture**, asegurando un código mantenible, testeable y desacoplado de las APIs externas.
+
+```mermaid
+graph TD
+    subgraph Presentation
+        UI[Widgets & Glassmorphism]
+        BL[BLoC / State Mgmt]
+    end
+    subgraph Domain
+        ENT[Entities]
+        UC[Use Cases]
+    end
+    subgraph Infrastructure
+        REPO[Repositories]
+        API[External APIs]
+        ML[TFLite Engine]
+    end
+
+    UI --> BL
+    BL --> UC
+    UC --> ENT
+    UC --> REPO
+    REPO --> API
+    REPO --> ML
 ```
+
+| Capa | Tecnologías Clave |
+| :--- | :--- |
+| **UI** | Flutter 3.11+, Glassmorphism, fl_chart, Google Fonts (Manrope), Soporte Dark/Light Mode |
+| **IA/ML** | TFLite (YOLO26), Groq (Llama 3.3), Gemini 3.1 |
+| **Data** | OpenFoodFacts API, Spoonacular, Edamam, USDA |
+| **Persistence** | Shared Preferences, Local JSON Assets |
+
+---
+
+## 🧪 Data Science & Entrenamiento
+
+Uno de los mayores retos fue la falta de datasets de calidad para comida chilena. Para solucionar esto:
+
+1. **Curación de Dataset**: Se recopilaron y etiquetaron imágenes para **30 clases específicas** (Empanadas, Completos, Cazuela, etc.).
+2. **Transfer Learning**: Se utilizó YOLO26 como base, optimizando hiperparámetros para dispositivos móviles.
+3. **Optimización**: Conversión a `float16` para reducir el tamaño del modelo sin sacrificar precisión significativa.
 
 > [!TIP]
-> **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtu.be/Papv_p2c90o?si=4MR1eUosuUuBJtQS).
-
-<details>
-<summary><strong>🎞️ Guion de la Demo (Walkthrough)</strong></summary>
-
-| Fase | Tiempo | Funcionalidad |
-| :--- | :--- | :--- |
-| **Intro** | 00–10s | Splash screen → Dashboard principal con UI Glassmorphism |
-| **IA Vision** | 10–25s | Escaneo en tiempo real con **YOLO26** · Detección múltiple |
-| **Barcode** | 25–35s | Escaneo de productos vía **OpenFoodFacts** |
-| **Voice AI** | 35–50s | Registro por voz procesado por **Groq** (NLP) |
-| **Analytics** | 50–60s | Dashboard interactivo con `fl_chart` · Gestión de metas |
-
-</details>
-
-### 🌟 ¿Por qué destaca este proyecto?
-
-| Problema Real | Solución Técnica |
-| :--- | :--- |
-| Registrar comida es tedioso y lento | 📸 **Camera-First**: una foto = registro completo con macros |
-| Las apps solo conocen comida anglosajona | 🇨🇱 **30 clases chilenas** entrenadas con dataset propio en YOLO26 |
-| No hay contexto nutricional personalizado | 🤖 **Gemini + Groq**: coaching dinámico basado en macros restantes |
-| El modelo puede fallar sin internet | 🧠 **Motor híbrido**: YOLO26 on-device + fallback de análisis cromático |
-| Los scanners de barras no muestran macros | 📦 **OpenFoodFacts** integrado con datos nutricionales completos |
-| Las recetas vienen de una sola fuente | 🔀 **Cascade multi-API**: Edamam + Spoonacular + OpenFoodFacts + DB local |
+> Puedes revisar el proceso de entrenamiento completo en el notebook adjunto:
+> 📓 **[YOLO26_ComidaChilena.ipynb](assets/models/YOLO26_ComidaChilena.ipynb)**
 
 ---
 
-## ✨ Características Principales
-
-### 🎯 Motor de Visión Híbrido
-Detección **YOLO26 float16** on-device (~120ms en Pixel 7) con fallback de análisis cromático para asegurar resultados incluso en condiciones difíciles.
-
-### 🍳 Motor de Recetas Multi-Fuente
-Sistema de búsqueda inteligente que combina **6 fuentes de datos** (Spoonacular, Edamam, OpenFoodFacts, DB Local) con deduplicación automática y traducción inteligente por IA.
-
-### 🎤 Parser de Voz con Dual AI
-Registro por voz ultra-rápido usando **Groq (Llama 3.3 70B)** como motor primario y **Gemini 3.1 Flash** como backup de alta precisión.
-
----
-
-## 🏗️ Arquitectura
-Arquitectura por capas (Clean Architecture) con Service Locator y orquestación de datos centralizada.
-
-| Capa | Tecnología |
-| :--- | :--- |
-| **UI** | Flutter 3.11 · Glassmorphism |
-| **IA** | TFLite (YOLO26) · Groq (Llama 3.3) · Gemini 3.1 |
-| **APIs** | Edamam · Spoonacular · OpenFoodFacts · USDA |
-| **Gráficos** | fl_chart |
-
----
-
-## 🚀 Instalación y Generación de APK
+## 🚀 Instalación y Desarrollo
 
 ### Prerrequisitos
-- Flutter SDK 3.11+
+- Flutter SDK `^3.11.1`
 - Android Studio / VS Code
 
-### 1. Configurar y Ejecutar
-Copia el script de ejemplo y agrega tus keys:
+### 1. Clonar y Configurar
 ```powershell
+git clone https://github.com/Paimilla/nutrifoto.git
+cd nutrifoto
 Copy-Item run.example.ps1 run.ps1
-# Edita run.ps1 y ejecuta:
-.\run.ps1
 ```
 
-### 2. Generar APK (para descarga o Appetize)
-Para que la app funcione correctamente en el APK, **debes incluir las API Keys** en el comando de build:
+### 2. Ejecutar con API Keys
+Edita `run.ps1` con tus credenciales o ejecuta directamente con flags:
 
 ```bash
-flutter build apk --release \
-  --dart-define=GEMINI_API_KEY=tu_key \
-  --dart-define=GROQ_API_KEY=tu_key \
-  --dart-define=EDAMAM_APP_ID=tu_id \
-  --dart-define=EDAMAM_APP_KEY=tu_key \
-  --dart-define=USDA_API_KEY=tu_key \
-  --dart-define=SPOONACULAR_API_KEY=tu_key
+flutter run --release \
+  --dart-define=GEMINI_API_KEY=TU_KEY \
+  --dart-define=GROQ_API_KEY=TU_KEY \
+  --dart-define=EDAMAM_APP_ID=TU_ID \
+  --dart-define=EDAMAM_APP_KEY=TU_KEY
 ```
-
-> **Ubicación del archivo**: Una vez termine, el APK estará en:
-> `build/app/outputs/flutter-apk/app-release.apk`
-
-### 🌐 Appetize.io
-1. Sube el archivo `app-release.apk` a [Appetize.io](https://appetize.io/upload).
-2. Te darán una URL para probar la app directamente en el navegador.
 
 ---
 
 ## 📄 Licencia
-Distribuido bajo licencia **MIT**.
+Este proyecto está bajo la licencia **MIT**.
 
 <p align="center">
-  <strong>Construido con 💜 y mucho café ☕ en Chile 🇨🇱</strong><br>
-  <sub>Francisco Paimilla · 2026</sub>
+  <strong>Desarrollado con 💜 por Francisco Paimilla</strong><br>
+  <sub>Santiago, Chile · 2026</sub>
 </p>
