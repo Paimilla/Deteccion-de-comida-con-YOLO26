@@ -45,7 +45,7 @@ La aplicación no solo identifica comida; actúa como un asistente inteligente g
 </p>
 
 > [!TIP]
-> **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtube.com/tuvideo).
+> **Video Completo**: Puedes ver el funcionamiento de la app en acción en este [Video de YouTube](https://youtu.be/Papv_p2c90o?si=4MR1eUosuUuBJtQS).
 
 <details>
 <summary>🎞️ Ver Guion de la Demo (Walkthrough)</summary>
