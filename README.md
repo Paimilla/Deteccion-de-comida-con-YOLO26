@@ -115,13 +115,86 @@ graph TD
 
 Uno de los mayores retos fue la falta de datasets de calidad para comida chilena. Para solucionar esto:
 
-1. **Curación de Dataset**: Se recopilaron y etiquetaron imágenes para **30 clases específicas** (Empanadas, Completos, Cazuela, etc.).
+1. **Curación de Dataset**: Se recopilaron y etiquetaron imágenes para **30 clases específicas** (Empanadas, Completos, Cazuela, etc.). El dataset fue curado y procesado íntegramente en Roboflow: **[Ver Dataset en Roboflow](https://app.roboflow.com/nutriplato/comida-chilena-mbfky/models)**.
 2. **Transfer Learning**: Se utilizó YOLO26 como base, optimizando hiperparámetros para dispositivos móviles.
 3. **Optimización**: Conversión a `float16` para reducir el tamaño del modelo sin sacrificar precisión significativa.
 
 > [!TIP]
-> Puedes revisar el proceso de entrenamiento completo en el notebook adjunto:
-> 📓 **[YOLO26_ComidaChilena.ipynb](assets/models/YOLO26_ComidaChilena.ipynb)**
+> Puedes revisar el dataset curado y el proceso de entrenamiento completo:
+> 🖼️ **[Dataset en Roboflow](https://app.roboflow.com/nutriplato/comida-chilena-mbfky/models)**
+> 📓 **[Notebook YOLO26_ComidaChilena.ipynb](assets/models/YOLO26_ComidaChilena.ipynb)**
+
+### 📊 Métricas y Resultados
+
+<p align="center">
+  <img src="assets/docs/training/dataset_statistics.png" alt="Estadísticas" width="300"/>
+  <br><em>Curvas de Loss (Box, Cls, DFL) y resumen de precisión mAP@50.</em>
+</p>
+
+<p align="center">
+  <img src="assets/docs/training/training_metrics.png" alt="Detección en acción" width="600"/>
+  <br><em>Inferencia en tiempo real: Detección múltiple con altos niveles de confianza.</em>
+</p>
+
+<p align="center">
+  <img src="assets/docs/training/training_results.png" alt="Precisión por clase" width="700"/>
+  <br><em>Precisión mAP desglosada por cada una de las 30 clases detectadas.</em>
+</p>
+
+---
+
+## 🇨🇱 Clases Detectadas (30)
+
+El modelo está optimizado para reconocer los siguientes alimentos y preparaciones:
+
+<table>
+<tr><td>
+
+| # | Clase |
+|---|-------|
+| 1 | Arroz |
+| 2 | Arvejas |
+| 3 | Brócoli |
+| 4 | Calzones rotos |
+| 5 | Carne |
+| 6 | Cazuela |
+| 7 | Charquicán |
+| 8 | Choripán |
+| 9 | Completos |
+| 10 | Durazno |
+
+</td><td>
+
+| # | Clase |
+|---|-------|
+| 11 | Empanada |
+| 12 | Ensalada chilena |
+| 13 | Huevos fritos |
+| 14 | Humitas |
+| 15 | Manzana |
+| 16 | Mote con huesillo |
+| 17 | Naranja |
+| 18 | Palomitas |
+| 19 | Palta |
+| 20 | Papas fritas |
+
+</td><td>
+
+| # | Clase |
+|---|-------|
+| 21 | Pasta |
+| 22 | Pastel de choclo |
+| 23 | Pescado frito |
+| 24 | Pizza |
+| 25 | Plátano |
+| 26 | Pollo |
+| 27 | Porotos con riendas |
+| 28 | Salmón |
+| 29 | Sopaipillas |
+| 30 | Tiramisú |
+
+</td></tr>
+</table>
 
 ---
 
