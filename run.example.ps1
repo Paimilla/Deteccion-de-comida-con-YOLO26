@@ -8,6 +8,7 @@
 
 flutter run `
   --dart-define=GEMINI_API_KEY=TU_CLAVE_GEMINI_AQUI `
-  --dart-define=EDAMAM_APP_ID=TU_APP_ID_AQUI `
-  --dart-define=EDAMAM_APP_KEY=TU_APP_KEY_AQUI `
+  --dart-define=GROQ_API_KEY=TU_CLAVE_GROQ_AQUI `
+  --dart-define=SPOONACULAR_API_KEY=TU_CLAVE_SPOONACULAR_AQUI `
   --dart-define=REGISTRATION_WEBHOOK_URL=TU_WEBHOOK_URL_AQUI
+

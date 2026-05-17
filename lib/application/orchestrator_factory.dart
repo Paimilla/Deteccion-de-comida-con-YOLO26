@@ -1,7 +1,5 @@
 import '../domain/repositories/food_provider.dart';
 import '../infrastructure/providers/cascade_provider.dart';
-import '../infrastructure/providers/edamam_provider.dart';
-import '../infrastructure/providers/edamam_recipe_provider.dart';
 import '../infrastructure/providers/onnx_vision_provider.dart';
 import '../infrastructure/providers/local_chile_provider.dart';
 import '../infrastructure/providers/openfoodfacts_provider.dart';
@@ -45,14 +43,6 @@ class OrchestratorFactory {
     // ── Proveedores de búsqueda de alimentos ──
     final searchProviders = <FoodSearchProvider>[];
 
-    // Edamam: proveedor premium
-    if (config.edamamAppId.isNotEmpty && config.edamamAppKey.isNotEmpty) {
-      searchProviders.add(EdamamProvider(
-        appId: config.edamamAppId,
-        appKey: config.edamamAppKey,
-      ));
-    }
-
     // OpenFoodFacts: siempre disponible como fallback
     searchProviders.add(offSearch);
 
@@ -77,13 +67,7 @@ class OrchestratorFactory {
       ));
     }
 
-    // 2. Edamam: excelente precisión nutricional
-    if (config.edamamAppId.isNotEmpty && config.edamamAppKey.isNotEmpty) {
-      recipeProviders.add(EdamamRecipeProvider(
-        appId: config.edamamAppId,
-        appKey: config.edamamAppKey,
-      ));
-    }
+
 
     // 3. OpenFoodFacts: fallback gratuito
     recipeProviders.add(offSearch);

@@ -14,10 +14,6 @@ class ApiConfig {
   /// API key de Groq (Backup)
   final String groqApiKey;
 
-  /// Edamam Food Database API credentials
-  final String edamamAppId;
-  final String edamamAppKey;
-
   const ApiConfig({
     required this.openFoodFactsBaseUrl,
     required this.usdaApiKey,
@@ -29,7 +25,5 @@ class ApiConfig {
     this.libreTranslateApiKey,
     this.geminiApiKey = '',
     this.groqApiKey = '',
-    this.edamamAppId = '',
-    this.edamamAppKey = '',
   });
 }

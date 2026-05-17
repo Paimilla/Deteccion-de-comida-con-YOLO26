@@ -64,7 +64,7 @@ graph LR
 Implementación de **YOLO26 float16** mediante `tflite_flutter`, logrando inferencia en tiempo real (~120ms) sin depender de la nube. Incluye un sistema de **análisis cromático inteligente** como fallback para mejorar la robustez en condiciones de baja iluminación.
 
 ### 🍳 Orquestador de Recetas Inteligente
-Un motor de búsqueda "Cascade" que consulta secuencialmente 6 fuentes (Spoonacular, Edamam, OpenFoodFacts, USDA y DB Local), aplicando:
+Un motor de búsqueda "Cascade" que consulta secuencialmente diversas fuentes (Spoonacular, OpenFoodFacts, USDA y DB Local), aplicando:
 - **Deduplicación semántica** para evitar resultados repetidos.
 - **Traducción dinámica** de ingredientes mediante IA para fuentes en inglés.
 - **Enriquecimiento de datos** cruzando información entre APIs.
@@ -106,7 +106,7 @@ graph TD
 | :--- | :--- |
 | **UI** | Flutter 3.11+, Glassmorphism, fl_chart, Google Fonts (Manrope), Soporte Dark/Light Mode |
 | **IA/ML** | TFLite (YOLO26), Groq (Llama 3.3), Gemini 3.1 |
-| **Data** | OpenFoodFacts API, Spoonacular, Edamam, USDA |
+| **Data** | OpenFoodFacts API, Spoonacular, USDA |
 | **Persistence** | Shared Preferences, Local JSON Assets |
 
 ---
@@ -289,8 +289,7 @@ Edita `run.ps1` con tus credenciales o ejecuta directamente con flags:
 flutter run --release \
   --dart-define=GEMINI_API_KEY=TU_KEY \
   --dart-define=GROQ_API_KEY=TU_KEY \
-  --dart-define=EDAMAM_APP_ID=TU_ID \
-  --dart-define=EDAMAM_APP_KEY=TU_KEY
+  --dart-define=SPOONACULAR_API_KEY=TU_KEY
 ```
 
 ---

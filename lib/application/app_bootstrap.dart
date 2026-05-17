@@ -49,13 +49,9 @@ class AppBootstrap {
         defaultValue: 'http://10.0.2.2:8000',
       ),
       geminiApiKey:
-          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'AIzaSyDfzEiD7bPjGhDDtVXthv5wD1L3PWUT0Zs'),
+          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: ''),
       groqApiKey:
-          const String.fromEnvironment('GROQ_API_KEY', defaultValue: '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'),
-      edamamAppId:
-          const String.fromEnvironment('EDAMAM_APP_ID', defaultValue: '4141d0d4'),
-      edamamAppKey:
-          const String.fromEnvironment('EDAMAM_APP_KEY', defaultValue: 'a79c06be7a90459dc28ed9ccf5ccc837'),
+          const String.fromEnvironment('GROQ_API_KEY', defaultValue: ''),
     );
 
     final chileDatasetJson = await _loadChileDatasetJson();
@@ -109,7 +105,7 @@ class AppBootstrap {
     final registrationTracker = RegistrationTracker(
       webhookUrl: const String.fromEnvironment(
         'REGISTRATION_WEBHOOK_URL',
-        defaultValue: 'https://script.google.com/macros/s/AKfycbwmkmfrAZSI18TWJdxxoy3cDp3P2QnZDQ71m1p-q1U5YxEc9VtxVQUDT95eOJqhblcI/exec',
+        defaultValue: '',
       ),
     );
 
