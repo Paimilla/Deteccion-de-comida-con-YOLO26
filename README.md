@@ -293,11 +293,3 @@ flutter run --release \
 ```
 
 ---
-
-## 📄 Licencia
-Este proyecto está bajo la licencia **MIT**.
-
-<p align="center">
-  <strong>Desarrollado con 💜 por Francisco Paimilla</strong><br>
-  <sub>Santiago, Chile · 2026</sub>
-</p>
